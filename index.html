@@ -1,0 +1,1140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Pokémon Simple Game</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: #1b2620; color: #d9e4cf; font-family: system-ui, -apple-system, Segoe UI, sans-serif; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+  .shell { background: #cbc6ba; border-radius: 14px 14px 52px 14px; padding: 18px 18px 22px; box-shadow: 0 12px 30px rgba(0,0,0,.5), inset -4px -6px 0 #a7a296; }
+  .bezel { background: #4f5263; border-radius: 10px 10px 32px 10px; padding: 18px 22px 20px; }
+  canvas { display: block; width: 320px; height: 288px; image-rendering: pixelated; image-rendering: crisp-edges; background: #e0f8d0; }
+  .label { margin-top: 10px; text-align: center; font: italic 700 13px/1 system-ui, sans-serif; letter-spacing: 2px; color: #2c3a8c; }
+  .controls { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 0 4px; }
+  .dpad { position: relative; width: 102px; height: 102px; }
+  .dpad button, .dpad span { position: absolute; width: 34px; height: 34px; background: #2a2a2e; border: 0; padding: 0; }
+  .dpad .up { left: 34px; top: 0; border-radius: 4px 4px 0 0; }
+  .dpad .down { left: 34px; bottom: 0; border-radius: 0 0 4px 4px; }
+  .dpad .left { left: 0; top: 34px; border-radius: 4px 0 0 4px; }
+  .dpad .right { right: 0; top: 34px; border-radius: 0 4px 4px 0; }
+  .dpad span { left: 34px; top: 34px; }
+  .ab { display: flex; gap: 16px; transform: rotate(-25deg); }
+  .ab button { width: 46px; height: 46px; border-radius: 50%; border: 0; background: #9a2352; color: #f3d6e1; font-weight: 700; font-size: 15px; box-shadow: 0 3px 0 #5e1431; }
+  .ss { display: flex; justify-content: center; gap: 22px; margin-top: 18px; }
+  .ss button { width: 50px; height: 12px; border-radius: 6px; border: 0; background: #77767c; transform: rotate(-25deg); position: relative; }
+  .ss button::after { content: attr(data-label); position: absolute; top: 16px; left: 0; right: 0; font-size: 9px; font-weight: 700; color: #3b3f73; letter-spacing: 1px; }
+  button:active, button.on { filter: brightness(0.75); }
+  .hint { margin-top: 14px; font-size: 13px; opacity: .75; text-align: center; line-height: 1.5; }
+  kbd { background: #2d3a32; border-radius: 4px; padding: 1px 5px; font-family: inherit; }
+  @media (hover: hover) and (pointer: fine) { .controls, .ss { display: none; } }
+  @media not ((hover: hover) and (pointer: fine)) { .hint { display: none; } }
+</style>
+</head>
+<body>
+<div class="shell" id="shell">
+  <div class="bezel">
+    <canvas id="screen" width="160" height="144"></canvas>
+  </div>
+  <div class="label">POCKET MONSTER</div>
+  <div class="controls">
+    <div class="dpad">
+      <button class="up" data-key="up" aria-label="Up"></button>
+      <button class="left" data-key="left" aria-label="Left"></button>
+      <span></span>
+      <button class="right" data-key="right" aria-label="Right"></button>
+      <button class="down" data-key="down" aria-label="Down"></button>
+    </div>
+    <div class="ab">
+      <button data-key="B">B</button>
+      <button data-key="A">A</button>
+    </div>
+  </div>
+  <div class="ss">
+    <button data-key="SELECT" data-label="SOUND" aria-label="Toggle sound"></button>
+    <button data-key="START" data-label="START" aria-label="Start"></button>
+  </div>
+</div>
+<div class="hint" id="hint">
+  <kbd>←↑↓→</kbd> move &nbsp; <kbd>Z</kbd>/<kbd>Space</kbd> A (talk, confirm) &nbsp; <kbd>X</kbd> B (back)<br>
+  <kbd>Enter</kbd> START (menu) &nbsp; <kbd>M</kbd> sound on/off
+</div>
+
+<script>
+'use strict';
+// ---------------------------------------------------------------------------
+// Palette & drawing helpers (classic 4-shade green Game Boy palette)
+// ---------------------------------------------------------------------------
+const C = ['#e0f8d0', '#88c070', '#346856', '#081820'];
+const cv = document.getElementById('screen');
+const ctx = cv.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+function rect(g, x, y, w, h, c) { g.fillStyle = C[c]; g.fillRect(x, y, w, h); }
+function blit(g, rows, ox = 0, oy = 0) {
+  rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] !== '.') rect(g, ox + x, oy + y, 1, 1, +r[x]); });
+}
+function sprite(rows) { const c = mk(rows[0].length, rows.length); blit(c.getContext('2d'), rows); return c; }
+const mirror = rows => rows.map(r => [...r].reverse().join(''));
+const withRows = (rows, repl) => rows.map((r, i) => repl[i] !== undefined ? repl[i] : r);
+function drawSprite(img, x, y, sc = 1, flip = false) {
+  const w = img.width * sc, h = img.height * sc;
+  x = Math.round(x); y = Math.round(y);
+  if (flip) { ctx.save(); ctx.translate(x + w, y); ctx.scale(-1, 1); ctx.drawImage(img, 0, 0, w, h); ctx.restore(); }
+  else ctx.drawImage(img, x, y, w, h);
+}
+
+// ---------------------------------------------------------------------------
+// 5x7 bitmap font
+// ---------------------------------------------------------------------------
+const FONT = {
+  A: '.xxx. x...x x...x xxxxx x...x x...x x...x', B: 'xxxx. x...x x...x xxxx. x...x x...x xxxx.',
+  C: '.xxx. x...x x.... x.... x.... x...x .xxx.', D: 'xxxx. x...x x...x x...x x...x x...x xxxx.',
+  E: 'xxxxx x.... x.... xxxx. x.... x.... xxxxx', F: 'xxxxx x.... x.... xxxx. x.... x.... x....',
+  G: '.xxx. x...x x.... x.xxx x...x x...x .xxxx', H: 'x...x x...x x...x xxxxx x...x x...x x...x',
+  I: '.xxx. ..x.. ..x.. ..x.. ..x.. ..x.. .xxx.', J: '..xxx ...x. ...x. ...x. ...x. x..x. .xx..',
+  K: 'x...x x..x. x.x.. xx... x.x.. x..x. x...x', L: 'x.... x.... x.... x.... x.... x.... xxxxx',
+  M: 'x...x xx.xx x.x.x x.x.x x...x x...x x...x', N: 'x...x x...x xx..x x.x.x x..xx x...x x...x',
+  O: '.xxx. x...x x...x x...x x...x x...x .xxx.', P: 'xxxx. x...x x...x xxxx. x.... x.... x....',
+  Q: '.xxx. x...x x...x x...x x.x.x x..x. .xx.x', R: 'xxxx. x...x x...x xxxx. x.x.. x..x. x...x',
+  S: '.xxxx x.... x.... .xxx. ....x ....x xxxx.', T: 'xxxxx ..x.. ..x.. ..x.. ..x.. ..x.. ..x..',
+  U: 'x...x x...x x...x x...x x...x x...x .xxx.', V: 'x...x x...x x...x x...x x...x .x.x. ..x..',
+  W: 'x...x x...x x...x x.x.x x.x.x x.x.x .x.x.', X: 'x...x x...x .x.x. ..x.. .x.x. x...x x...x',
+  Y: 'x...x x...x .x.x. ..x.. ..x.. ..x.. ..x..', Z: 'xxxxx ....x ...x. ..x.. .x... x.... xxxxx',
+  0: '.xxx. x...x x..xx x.x.x xx..x x...x .xxx.', 1: '..x.. .xx.. ..x.. ..x.. ..x.. ..x.. .xxx.',
+  2: '.xxx. x...x ....x ...x. ..x.. .x... xxxxx', 3: 'xxxxx ...x. ..x.. ...x. ....x x...x .xxx.',
+  4: '...x. ..xx. .x.x. x..x. xxxxx ...x. ...x.', 5: 'xxxxx x.... xxxx. ....x ....x x...x .xxx.',
+  6: '..xx. .x... x.... xxxx. x...x x...x .xxx.', 7: 'xxxxx ....x ...x. ..x.. .x... .x... .x...',
+  8: '.xxx. x...x x...x .xxx. x...x x...x .xxx.', 9: '.xxx. x...x x...x .xxxx ....x ...x. .xx..',
+  '.': '..... ..... ..... ..... ..... .xx.. .xx..', ',': '..... ..... ..... ..... .xx.. ..x.. .x...',
+  '!': '..x.. ..x.. ..x.. ..x.. ..x.. ..... ..x..', '?': '.xxx. x...x ....x ...x. ..x.. ..... ..x..',
+  "'": '..x.. ..x.. .x... ..... ..... ..... .....', '-': '..... ..... ..... xxxxx ..... ..... .....',
+  ':': '..... .xx.. .xx.. ..... .xx.. .xx.. .....', '/': '....x ...x. ...x. ..x.. .x... .x... x....',
+  '(': '...x. ..x.. .x... .x... .x... ..x.. ...x.', ')': '.x... ..x.. ...x. ...x. ...x. ..x.. .x...',
+  'é': '...x. ..x.. .xxx. x...x xxxxx x.... .xxx.',
+  '▶': 'x.... xx... xxx.. xxxx. xxx.. xx... x....',
+  '▼': '..... ..... xxxxx .xxx. ..x.. ..... .....',
+};
+const GLYPH = {};
+function glyph(c, col) {
+  const k = c + col;
+  if (k in GLYPH) return GLYPH[k];
+  const src = FONT[c];
+  if (!src) return (GLYPH[k] = null);
+  const g = mk(5, 7), gc = g.getContext('2d');
+  src.split(' ').forEach((r, y) => [...r].forEach((ch, x) => { if (ch === 'x') rect(gc, x, y, 1, 1, col); }));
+  return (GLYPH[k] = g);
+}
+const norm = c => (c === 'é' || c === 'É') ? 'é' : c.toUpperCase();
+function drawText(s, x, y, col = 3, sc = 1) {
+  let cx = x;
+  for (const ch of String(s)) {
+    if (ch !== ' ') { const g = glyph(norm(ch), col); if (g) ctx.drawImage(g, cx, y, 5 * sc, 7 * sc); }
+    cx += 6 * sc;
+  }
+}
+const centerText = (s, y, col = 3, sc = 1) => drawText(s, Math.round((160 - (s.length * 6 - 1) * sc) / 2), y, col, sc);
+function box(x, y, w, h) { rect(ctx, x, y, w, h, 3); rect(ctx, x + 1, y + 1, w - 2, h - 2, 0); rect(ctx, x + 2, y + 2, w - 4, h - 4, 3); rect(ctx, x + 3, y + 3, w - 6, h - 6, 0); }
+
+// ---------------------------------------------------------------------------
+// Tiles (16x16)
+// ---------------------------------------------------------------------------
+function tile(fn) { const c = mk(16, 16); fn(c.getContext('2d')); return c; }
+function lawn(g) { rect(g, 0, 0, 16, 16, 0); for (const [x, y] of [[2, 2], [10, 5], [4, 10], [12, 12]]) { rect(g, x, y, 1, 1, 1); rect(g, x + 2, y, 1, 1, 1); rect(g, x + 1, y + 1, 1, 1, 1); } }
+function floor(g) { rect(g, 0, 0, 16, 16, 0); rect(g, 0, 0, 16, 1, 1); rect(g, 0, 8, 16, 1, 1); rect(g, 0, 0, 1, 16, 1); rect(g, 8, 0, 1, 16, 1); }
+const TALL = ['11111111', '13111311', '32313231', '22222222', '11111111', '11131113', '31323132', '22222222'];
+const TREE = [
+  '.....333333.....', '...3322222233...', '..322121222223..', '.32211112212223.',
+  '.32111122222223.', '3221112222122223', '3222222221112223', '3222122222111223',
+  '3222111222222223', '.32221112222223.', '.33222222222233.', '..333222222333..',
+  '....33333333....', '......3113......', '......3113......', '.....331133.....'];
+const T = {
+  '.': tile(lawn),
+  ',': tile(g => { rect(g, 0, 0, 16, 16, 0); for (let y = 1; y < 16; y += 4) for (let x = (y % 8 === 1 ? 1 : 3); x < 16; x += 4) rect(g, x, y, 1, 1, 1); }),
+  'G': tile(g => { for (let y = 0; y < 16; y += 8) for (let x = 0; x < 16; x += 8) blit(g, TALL, x, y); }),
+  'T': tile(g => { rect(g, 0, 0, 16, 16, 0); blit(g, TREE); }),
+  'f': tile(g => { rect(g, 0, 0, 16, 16, 0); for (const [x, y] of [[2, 2], [10, 3], [5, 10], [12, 11]]) { rect(g, x + 1, y, 1, 1, 2); rect(g, x, y + 1, 1, 1, 2); rect(g, x + 2, y + 1, 1, 1, 2); rect(g, x + 1, y + 2, 1, 1, 2); rect(g, x + 1, y + 1, 1, 1, 3); } }),
+  'F': tile(g => { lawn(g); rect(g, 0, 4, 16, 2, 2); rect(g, 0, 4, 16, 1, 3); rect(g, 0, 10, 16, 2, 2); rect(g, 0, 10, 16, 1, 3); rect(g, 3, 2, 3, 12, 3); rect(g, 4, 3, 1, 10, 1); rect(g, 11, 2, 3, 12, 3); rect(g, 12, 3, 1, 10, 1); }),
+  'S': tile(g => { lawn(g); rect(g, 7, 10, 2, 6, 3); rect(g, 1, 2, 14, 9, 3); rect(g, 2, 3, 12, 7, 1); rect(g, 4, 5, 8, 1, 2); rect(g, 4, 7, 6, 1, 2); }),
+  'r': tile(g => { rect(g, 0, 0, 16, 16, 2); rect(g, 0, 0, 16, 1, 1); for (let b = 0; b < 4; b++) { rect(g, 0, b * 4 + 3, 16, 1, 3); for (let x = (b % 2 ? 0 : 4); x < 16; x += 8) rect(g, x, b * 4, 1, 3, 3); } }),
+  'h': tile(g => { rect(g, 0, 0, 16, 16, 0); for (const y of [3, 7, 11]) rect(g, 0, y, 16, 1, 1); rect(g, 0, 15, 16, 1, 2); }),
+  'R': tile(g => { rect(g, 0, 0, 16, 16, 1); for (let x = 1; x < 16; x += 4) rect(g, x, 0, 1, 15, 2); rect(g, 0, 15, 16, 1, 3); }),
+  'l': tile(g => { rect(g, 0, 0, 16, 16, 0); rect(g, 0, 0, 1, 15, 1); rect(g, 8, 0, 1, 15, 1); rect(g, 0, 15, 16, 1, 2); }),
+  '_': tile(floor),
+  'X': tile(g => { rect(g, 0, 0, 16, 16, 0); for (let x = 1; x < 16; x += 4) rect(g, x, 0, 2, 12, 1); rect(g, 0, 12, 16, 1, 3); rect(g, 0, 13, 16, 3, 2); }),
+  'B': tile(g => { rect(g, 0, 0, 16, 16, 3); for (let s = 0; s < 3; s++) for (let x = 1; x < 15; x += 2) rect(g, x, 1 + s * 5, 1, 4, [0, 1, 2, 1, 0, 2, 1][(x + s) % 7]); }),
+  'C': tile(g => { rect(g, 0, 0, 16, 16, 3); rect(g, 1, 1, 14, 14, 1); rect(g, 3, 2, 10, 7, 3); rect(g, 4, 3, 8, 5, 0); rect(g, 5, 4, 5, 1, 2); rect(g, 5, 6, 3, 1, 2); rect(g, 3, 11, 2, 2, 3); rect(g, 7, 11, 2, 2, 3); rect(g, 11, 11, 2, 2, 2); }),
+  'K': tile(g => { floor(g); rect(g, 0, 3, 16, 10, 3); rect(g, 0, 4, 16, 8, 1); rect(g, 0, 4, 16, 1, 0); rect(g, 2, 13, 2, 3, 3); rect(g, 12, 13, 2, 3, 3); }),
+  'E': tile(g => { floor(g); rect(g, 1, 3, 14, 10, 2); rect(g, 1, 5, 14, 1, 3); rect(g, 1, 9, 14, 1, 3); }),
+};
+T.n = tile(g => { g.drawImage(T.h, 0, 0); rect(g, 3, 3, 10, 9, 3); rect(g, 4, 4, 8, 7, 1); rect(g, 8, 4, 1, 7, 3); rect(g, 4, 7, 8, 1, 3); rect(g, 5, 5, 2, 1, 0); });
+T.d = tile(g => { g.drawImage(T.h, 0, 0); rect(g, 3, 3, 10, 13, 3); rect(g, 4, 4, 8, 12, 2); rect(g, 10, 10, 1, 1, 0); });
+T.D = tile(g => { g.drawImage(T.l, 0, 0); rect(g, 2, 2, 12, 14, 3); rect(g, 3, 3, 4, 13, 1); rect(g, 9, 3, 4, 13, 1); rect(g, 4, 5, 2, 4, 0); rect(g, 10, 5, 2, 4, 0); });
+const waterTile = o => tile(g => { rect(g, 0, 0, 16, 16, 1); for (const [x, y] of [[1, 3], [9, 3], [5, 9], [13, 9]]) { rect(g, (x + o) % 16, y, 3, 1, 0); rect(g, (x + o + 3) % 16, y + 1, 1, 1, 0); } });
+T.w = waterTile(0);
+const WATER2 = waterTile(2);
+const SOLID = new Set('TFSwrRhlndXBCK');
+
+// ---------------------------------------------------------------------------
+// Character sprites
+// ---------------------------------------------------------------------------
+const P_DOWN = [
+  '....33333333....', '...3222222223...', '..322220022223..', '..322222222223..',
+  '.33333333333333.', '..300000000003..', '..303300003303..', '..300000000003..',
+  '...3000000003...', '..332233332233..', '.30322222222303.', '.30322222222303.',
+  '..332222222233..', '...3111331113...', '...3333..3333...', '................'];
+const P_UP = [
+  '....33333333....', '...3222222223...', '..322222222223..', '..322222222223..',
+  '..322222222223..', '..333333333333..', '..333333333333..', '..303333333303..',
+  '...3300000033...', '..332222222233..', '.30322222222303.', '.30322222222303.',
+  '..332222222233..', '...3111331113...', '...3333..3333...', '................'];
+const P_LEFT = [
+  '.....3333333....', '....322222223...', '...32222222223..', '...32222222223..',
+  '.3333333322223..', '...30000003333..', '...30300003033..', '...30000003333..',
+  '....3000003333..', '....33222223....', '....32222223....', '....32200223....',
+  '....33222233....', '....31111113....', '....3333.333....', '................'];
+const OAK_ROWS = [
+  '....33333333....', '...3111111113...', '..311111111113..', '..311111111113..',
+  '..310000000013..', '..303300003303..', '..300000000003..', '...3000330003...',
+  '...3333333333...', '..300022220003..', '.30000222200003.', '.30300222200303.',
+  '.33000000000033.', '..300003300003..', '...3223..3223...', '...3333..3333...'];
+const STEP_V = { 14: '...3333...33....' };
+const STEP_L = { 13: '...3111111113...', 14: '...333....333...' };
+const lstep = withRows(P_LEFT, STEP_L);
+const PL = {
+  down: [sprite(P_DOWN), sprite(withRows(P_DOWN, STEP_V)), sprite(mirror(withRows(P_DOWN, STEP_V)))],
+  up: [sprite(P_UP), sprite(withRows(P_UP, STEP_V)), sprite(mirror(withRows(P_UP, STEP_V)))],
+  left: [sprite(P_LEFT), sprite(lstep), sprite(lstep)],
+  right: [sprite(mirror(P_LEFT)), sprite(mirror(lstep)), sprite(mirror(lstep))],
+};
+const OAK = sprite(OAK_ROWS);
+const BALL = sprite(['..3333..', '.322223.', '32222223', '33300333', '30000003', '30000003', '.300003.', '..3333..']);
+
+// ---------------------------------------------------------------------------
+// Pokémon data
+// ---------------------------------------------------------------------------
+const SPECIES = {
+  BULBASAUR: { types: ['GRASS', 'POISON'], hp: 45, atk: 49, def: 49, spd: 45, rate: 45, exp: 64, desc: 'grass',
+    moves: ['TACKLE', 'GROWL', 'VINE WHIP'], art: [
+      '.......3333.....', '......322223....', '.....32212223...', '.33..32122223...',
+      '3113.32222223...', '31113322222223..', '3111113322223...', '3131131133223...',
+      '3101101111113...', '3111111111113...', '.3121111112113..', '.31111111111113.',
+      '..3111311131113.', '..3113..3113....', '..3333..3333....', '................'] },
+  CHARMANDER: { types: ['FIRE'], hp: 39, atk: 52, def: 43, spd: 65, rate: 45, exp: 62, desc: 'fire',
+    moves: ['SCRATCH', 'GROWL', 'EMBER'], art: [
+      '....3333........', '...311113.......', '..31111113......', '..31131013......',
+      '..31111113......', '..311111113.....', '...31133113.....', '....31113.......',
+      '...3110113...3..', '..31300031..323.', '...3100013..3223', '...31000113.323.',
+      '...3111111113...', '...311131113....', '...3333.3333....', '................'] },
+  SQUIRTLE: { types: ['WATER'], hp: 44, atk: 48, def: 65, spd: 43, rate: 45, exp: 63, desc: 'water',
+    moves: ['TACKLE', 'TAIL WHIP', 'WATER GUN'], art: [
+      '....33333.......', '...3111113......', '..311111113.....', '..313111313.....',
+      '..311111113.....', '...3133313......', '...3222223......', '..321000123.....',
+      '.31210001213....', '.31200000213....', '..3210001233....', '..32200022313...',
+      '...32222233113..', '...3113.3113....', '...3333.3333....', '................'] },
+  PIKACHU: { types: ['ELECTRIC'], hp: 35, atk: 55, def: 40, spd: 90, rate: 190, exp: 82, desc: 'electric mouse',
+    moves: ['THUNDERSHOCK', 'GROWL', 'QUICK ATTACK'], art: [
+      '.3...........3..', '.33.........33..', '.313.......313..', '..313.....313...',
+      '..31133333113...', '..31111111113...', '.3113111113113..', '.3111111111113..',
+      '.3221113111223..', '..31111111113...', '...311111113.3..', '..3131111131333.',
+      '..311111111133..', '..3111111113....', '...31133113.....', '...333..333.....'] },
+  PIDGEY: { types: ['NORMAL', 'FLYING'], hp: 40, atk: 45, def: 40, spd: 56, rate: 255, exp: 50,
+    moves: ['GUST', 'SAND-ATTACK'], art: [
+      '................', '.....333........', '....31113.......', '...3111113......',
+      '..33113113......', '.333111113......', '...31111113.....', '...312222113....',
+      '..3122222213....', '..31222222113...', '..31122221113...', '...31111111333..',
+      '....31111133333.', '.....33333......', '.....3.3........', '.....3.3........'] },
+  RATTATA: { types: ['NORMAL'], hp: 30, atk: 56, def: 35, spd: 72, rate: 255, exp: 51,
+    moves: ['TACKLE', 'TAIL WHIP', 'QUICK ATTACK'], art: [
+      '................', '................', '.33....33.......', '.3133333133.....',
+      '..311111113.....', '.31311111313....', '3111111111113...', '3301111111113...',
+      '.3031111111113..', '..3311111111113.', '...3110011111113', '...3100011111113',
+      '....311111113.33', '.....3113113..3.', '.....33.33...3..', '................'] },
+  CATERPIE: { types: ['BUG'], hp: 45, atk: 30, def: 35, spd: 45, rate: 255, exp: 53,
+    moves: ['TACKLE', 'STRING SHOT'], art: [
+      '..........3.....', '.........33.....', '.......33333....', '......3111113...',
+      '.....311311113..', '.....310311113..', '.....311111113..', '..333.3111113...',
+      '.31113.31113....', '3111113311113...', '3121213121213...', '3111113111113...',
+      '.31113.31113....', '.33333.33333....', '.3.3...3.3......', '................'] },
+  WEEDLE: { types: ['BUG', 'POISON'], hp: 40, atk: 35, def: 30, spd: 50, rate: 255, exp: 52,
+    moves: ['POISON STING', 'STRING SHOT'], art: [
+      '.........3......', '.........3......', '........333.....', '.......31113....',
+      '......3131113...', '......31111113..', '......3112113...', '..333.3111113...',
+      '.32223.32223....', '3222223322223...', '3212123212123...', '3222223222223...',
+      '.32223.32223....', '.33333.33333....', '.3.3...3.3......', '................'] },
+};
+const MON_IMG = {};
+for (const k in SPECIES) MON_IMG[k] = sprite(SPECIES[k].art);
+const STARTERS = ['BULBASAUR', 'CHARMANDER', 'SQUIRTLE', 'PIKACHU'];
+const WILD = [['PIDGEY', 34, 2, 5], ['RATTATA', 34, 2, 4], ['CATERPIE', 15, 3, 5], ['WEEDLE', 14, 3, 5], ['PIKACHU', 3, 3, 5]];
+
+const MOVES = {
+  'TACKLE': { type: 'NORMAL', pow: 35, acc: 95 },
+  'SCRATCH': { type: 'NORMAL', pow: 40, acc: 100 },
+  'QUICK ATTACK': { type: 'NORMAL', pow: 40, acc: 100, prio: 1 },
+  'THUNDERSHOCK': { type: 'ELECTRIC', pow: 40, acc: 100 },
+  'EMBER': { type: 'FIRE', pow: 40, acc: 100 },
+  'WATER GUN': { type: 'WATER', pow: 40, acc: 100 },
+  'VINE WHIP': { type: 'GRASS', pow: 45, acc: 100 },
+  'GUST': { type: 'FLYING', pow: 40, acc: 100 },
+  'POISON STING': { type: 'POISON', pow: 15, acc: 100 },
+  'GROWL': { type: 'NORMAL', stat: 'atk', acc: 100 },
+  'TAIL WHIP': { type: 'NORMAL', stat: 'def', acc: 100 },
+  'STRING SHOT': { type: 'BUG', stat: 'spd', acc: 95 },
+  'SAND-ATTACK': { type: 'NORMAL', stat: 'acc', acc: 100 },
+};
+const STAT_NAME = { atk: 'ATTACK', def: 'DEFENSE', spd: 'SPEED', acc: 'accuracy' };
+const EFFECT = {
+  FIRE: { GRASS: 2, BUG: 2, WATER: .5, FIRE: .5 },
+  WATER: { FIRE: 2, WATER: .5, GRASS: .5 },
+  GRASS: { WATER: 2, FIRE: .5, GRASS: .5, FLYING: .5, BUG: .5, POISON: .5 },
+  ELECTRIC: { WATER: 2, FLYING: 2, GRASS: .5, ELECTRIC: .5 },
+  FLYING: { GRASS: 2, BUG: 2, ELECTRIC: .5 },
+  BUG: { GRASS: 2, POISON: 2, FIRE: .5, FLYING: .5 },
+  POISON: { GRASS: 2, BUG: 2, POISON: .5 },
+  NORMAL: {},
+};
+const typeMul = (atk, defTypes) => defTypes.reduce((m, t) => m * (EFFECT[atk][t] ?? 1), 1);
+
+function calcStats(m) {
+  const s = SPECIES[m.name];
+  m.maxhp = Math.floor((s.hp * 2 + 15) * m.lvl / 100) + m.lvl + 10;
+  for (const k of ['atk', 'def', 'spd']) m[k] = Math.floor((s[k] * 2 + 15) * m.lvl / 100) + 5;
+}
+function makeMon(name, lvl) {
+  const m = { name, lvl, exp: lvl ** 3, moves: SPECIES[name].moves.slice() };
+  calcStats(m); m.hp = m.dhp = m.maxhp;
+  return m;
+}
+const healAll = () => G.party.forEach(m => { m.hp = m.dhp = m.maxhp; });
+const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+// ---------------------------------------------------------------------------
+// Maps
+// ---------------------------------------------------------------------------
+const MAPS = {
+  town: { rows: [
+    'TTTTTTTTTTTTTTTTTTTT', // 0  ROUTE 1
+    'TTTTTTTT,,,,TTTTTTTT',
+    'TTGGGG..,S,,..GGGGTT',
+    'TTGGGG..,,,,..GGGGTT',
+    'TTGGGGG.,,,,.GGGGGTT',
+    'TT..GG..,,,,..GG..TT',
+    'TT......,,,,......TT',
+    'TTFFFF..,,,,..FFFFTT',
+    'TTGGGGGG,,,,GGGGGGTT',
+    'TTGGGGGGGGGGGGGGGGTT',
+    'TTGGGGGG,,,,GGGGGGTT', // 10
+    'TT.ff...,,,,...ff.TT',
+    'TT......,,,,....TTTT',
+    'TTTT....,,,,..GGGGTT',
+    'TTGGGG..,,,,..GGGGTT',
+    'TTGGGG..,,,,..GGGGTT',
+    'TTGGGG..,,,,......TT',
+    'TT.....S,,,,......TT',
+    'TTTTTTTT,,,,TTTTTTTT',
+    'TTTTTTTT,,,,TTTTTTTT',
+    'TT......,,,,......TT', // 20 PALLET TOWN
+    'TT.rrrr.,,,,.rrrr.TT',
+    'TT.rrrr.,,,,.rrrr.TT',
+    'TT.hndh.,,,,.hdnh.TT',
+    'TT.f.,..,,,,..,.f.TT',
+    'TT...,,,,,,,,,,...TT',
+    'TT......,,,,......TT',
+    'TT......,,,,......TT',
+    'TT.RRRRRR.,,..www.TT',
+    'TT.llnnll.,,.wwww.TT',
+    'TT.llDlll.,,.wwww.TT', // 30
+    'TT...,....,,..ww..TT',
+    'TT...,,,,,,,.S....TT',
+    'TT.ff.....,,..ff..TT',
+    'TT........,,......TT',
+    'TTwwwwwwwwwwwwwwwwTT',
+    'TTTTTTTTTTTTTTTTTTTT'], edge: 'T' },
+  lab: { rows: [
+    'XBBBXXCCCX',
+    'X________X',
+    'X________X',
+    'X__KKKK__X',
+    'X________X',
+    'X________X',
+    'XBB____BBX',
+    'X________X',
+    'XXXXEEXXXX'], edge: 'X' },
+};
+for (const k in MAPS) { MAPS[k].w = MAPS[k].rows[0].length; MAPS[k].h = MAPS[k].rows.length; }
+function tileAt(map, x, y) { const m = MAPS[map]; return (x < 0 || y < 0 || x >= m.w || y >= m.h) ? m.edge : m.rows[y][x]; }
+const tileImg = ch => (ch === 'w' && (frame >> 5) & 1) ? WATER2 : (T[ch] || T['.']);
+const SIGNS = {
+  '13,32': 'PALLET TOWN\nShades of your journey await!',
+  '7,17': 'ROUTE 1\nPALLET TOWN - VIRIDIAN CITY',
+  '9,2': 'VIRIDIAN CITY is just ahead... but fallen trees block the road for now!',
+};
+const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+
+// ---------------------------------------------------------------------------
+// Game state
+// ---------------------------------------------------------------------------
+let G;
+function newState() {
+  return { scene: 'title', name: 'RED', party: [], box: [], balls: 0, flags: {}, map: 'town', x: 5, y: 24, dir: 'down' };
+}
+G = newState();
+const P = { off: 0, dx: 0, dy: 0, steps: 0, turn: 0, lastBump: -99, doorKey: null };
+const ui = { dialog: null, menu: null, waitBtn: null, overlay: null, showcase: null, fade: 0, flash: false, wipe: 0, toast: null, toastT: 0, partyIdx: 0, introMon: null };
+let B = null;
+let busy = 0, frame = 0;
+
+// ---------------------------------------------------------------------------
+// Sound (tiny square-wave beeps)
+// ---------------------------------------------------------------------------
+let actx = null, muted = false;
+function audio() {
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { actx = null; } }
+  if (actx && actx.state === 'suspended') actx.resume();
+  return actx;
+}
+const SFX = {
+  blip: [[1200, .03]], select: [[880, .05], [1320, .06]], bump: [[110, .07]], door: [[330, .06], [262, .08]],
+  encounter: [[392, .07], [523, .07], [659, .07], [784, .07], [659, .07], [784, .18]],
+  hit: [[180, .05], [110, .09]], super: [[320, .04], [140, .04], [320, .04], [90, .12]],
+  faint: [[600, .08], [450, .08], [300, .08], [150, .22]], throw: [[500, .04], [700, .04], [900, .05]],
+  shake: [[220, .05], [170, .06]], caught: [[523, .1], [659, .1], [784, .1], [1047, .3]],
+  levelup: [[523, .08], [659, .08], [784, .08], [1047, .22]], heal: [[784, .12], [659, .12], [784, .12], [1047, .3]],
+  get: [[659, .1], [784, .1], [988, .1], [1319, .3]], run: [[300, .05], [400, .05], [500, .08]], stat: [[600, .05], [500, .05], [400, .08]],
+};
+function sfx(name) {
+  const a = audio(); if (!a || muted || !SFX[name]) return;
+  let t = a.currentTime;
+  for (const [f, d] of SFX[name]) {
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = 'square'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.05, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + d);
+    t += d;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Input
+// ---------------------------------------------------------------------------
+const held = {}, pressed = {};
+let dirStack = [];
+const KEYMAP = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', z: 'A', Z: 'A', ' ': 'A', Enter: 'START', x: 'B', X: 'B', Escape: 'B', Backspace: 'B', m: 'SELECT', M: 'SELECT' };
+function press(k) {
+  if (!held[k]) { pressed[k] = true; if (DIRS[k]) dirStack.push(k); }
+  held[k] = true; audio();
+  if (k === 'SELECT') { muted = !muted; ui.toast = muted ? 'SOUND OFF' : 'SOUND ON'; ui.toastT = 70; }
+}
+function release(k) { held[k] = false; dirStack = dirStack.filter(d => d !== k); }
+addEventListener('keydown', e => { const k = KEYMAP[e.key]; if (!k) return; e.preventDefault(); if (!e.repeat) press(k); });
+addEventListener('keyup', e => { const k = KEYMAP[e.key]; if (k) release(k); });
+addEventListener('blur', () => { for (const k in held) release(k); });
+document.querySelectorAll('[data-key]').forEach(b => {
+  const k = b.dataset.key;
+  b.addEventListener('pointerdown', e => { e.preventDefault(); b.setPointerCapture?.(e.pointerId); b.classList.add('on'); press(k); });
+  const up = () => { b.classList.remove('on'); release(k); };
+  b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
+  b.addEventListener('contextmenu', e => e.preventDefault());
+});
+
+// ---------------------------------------------------------------------------
+// Script primitives (async helpers resolved by the frame loop)
+// ---------------------------------------------------------------------------
+const waiters = [];
+const wait = n => new Promise(r => waiters.push({ n, r }));
+async function tween(n, fn) { for (let i = 1; i <= n; i++) { fn(i / n); await wait(1); } }
+function wrap(text, max) {
+  const out = [];
+  for (const para of text.split('\n')) {
+    let line = '';
+    for (const w of para.split(' ')) {
+      if (!line) line = w;
+      else if ((line + ' ' + w).length <= max) line += ' ' + w;
+      else { out.push(line); line = w; }
+    }
+    out.push(line);
+  }
+  return out;
+}
+function say(text, opts = {}) {
+  return new Promise(res => {
+    const lines = wrap(text, 24), pages = [];
+    for (let i = 0; i < lines.length; i += 2) pages.push(lines.slice(i, i + 2));
+    ui.dialog = { pages, page: 0, chars: 0, res, keep: !!opts.keep, done: false };
+  });
+}
+function choose(opts, o = {}) {
+  return new Promise(res => {
+    const spacing = o.spacing || 16;
+    const w = o.w || 24 + Math.max(...opts.map(s => s.length)) * 6;
+    const h = o.h || 8 + opts.length * spacing;
+    ui.menu = { opts, res, idx: o.idx || 0, cols: o.cols || 1, cancel: o.cancel !== false, spacing, w, h,
+      x: o.x ?? 160 - w, y: o.y ?? 96 - h, colW: o.colW, draw: o.draw, extra: o.extra, battle: o.battle };
+  });
+}
+const waitButton = () => new Promise(r => { ui.waitBtn = r; });
+async function ask(text) {
+  await say(text, { keep: true });
+  const i = await choose(['YES', 'NO'], { x: 118, y: 56, w: 42, h: 40 });
+  ui.dialog = null;
+  return i === 0;
+}
+async function fadeOut() { for (const f of [1 / 3, 2 / 3, 1]) { ui.fade = f; await wait(5); } }
+async function fadeIn() { for (const f of [2 / 3, 1 / 3, 0]) { ui.fade = f; await wait(5); } }
+async function run(fn) {
+  busy++;
+  try { await fn(); } catch (e) { console.error(e); }
+  finally { busy--; }
+}
+
+// ---------------------------------------------------------------------------
+// Frame loop
+// ---------------------------------------------------------------------------
+function tick() {
+  frame++;
+  const A = pressed.A || pressed.START, Bk = pressed.B;
+  if (ui.menu) menuInput(A, Bk);
+  else if (ui.waitBtn) { if (A || Bk) { const r = ui.waitBtn; ui.waitBtn = null; sfx('blip'); r(); } }
+  else if (ui.dialog) dialogInput(A, Bk);
+
+  if (G.scene === 'world') {
+    worldUpdate();
+    if (!busy && !ui.menu && !ui.dialog && !ui.waitBtn) worldInput();
+  }
+
+  const d = ui.dialog;
+  if (d) {
+    const tot = d.pages[d.page].join('').length;
+    if (d.chars < tot) d.chars = Math.min(tot, d.chars + 1);
+    if (d.keep && !d.done && d.page === d.pages.length - 1 && d.chars >= tot) { d.done = true; d.res(); }
+  }
+  if (ui.toastT > 0) ui.toastT--;
+
+  for (let i = waiters.length - 1; i >= 0; i--) if (--waiters[i].n <= 0) waiters.splice(i, 1)[0].r();
+  for (const k in pressed) delete pressed[k];
+}
+function menuInput(A, Bk) {
+  const m = ui.menu, n = m.opts.length, cols = m.cols;
+  let i = m.idx;
+  if (pressed.up && i - cols >= 0) i -= cols;
+  if (pressed.down && i + cols < n) i += cols;
+  if (cols > 1) {
+    if (pressed.left && i % cols > 0) i--;
+    if (pressed.right && i % cols < cols - 1 && i + 1 < n) i++;
+  }
+  if (i !== m.idx) { m.idx = i; sfx('blip'); }
+  if (A) { ui.menu = null; sfx('select'); m.res(m.idx); }
+  else if (Bk && m.cancel) { ui.menu = null; sfx('blip'); m.res(-1); }
+}
+function dialogInput(A, Bk) {
+  const d = ui.dialog, last = d.page === d.pages.length - 1, tot = d.pages[d.page].join('').length;
+  if (d.chars < tot) { if (A) d.chars = tot; return; }
+  if (d.keep && last) return;
+  if (A || Bk) {
+    sfx('blip');
+    if (!last) { d.page++; d.chars = 0; } else { ui.dialog = null; d.res(); }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Overworld
+// ---------------------------------------------------------------------------
+function worldUpdate() {
+  if (P.off > 0) { P.off -= 2; if (P.off <= 0) { P.off = 0; onStep(); } }
+}
+function worldInput() {
+  if (P.off > 0) return;
+  if (pressed.START) { run(startMenu); return; }
+  if (pressed.A) { interact(); return; }
+  // A tap shorter than one frame never shows up in dirStack, so fall back to this frame's presses.
+  const d = dirStack[dirStack.length - 1] || Object.keys(DIRS).find(k => pressed[k]);
+  if (!d) { P.turn = 0; return; }
+  if (d !== G.dir) { G.dir = d; if (pressed[d]) { P.turn = 5; return; } }
+  if (P.turn > 0) { P.turn--; return; }
+  tryMove(d);
+}
+const npcAt = (x, y) => G.map === 'lab' && x === 7 && y === 2;
+function tryMove(d) {
+  const [dx, dy] = DIRS[d], nx = G.x + dx, ny = G.y + dy, ch = tileAt(G.map, nx, ny);
+  if (G.map === 'town' && !G.flags.starter && dy < 0 && ny <= 19) { run(gate); return; }
+  if (SOLID.has(ch) || npcAt(nx, ny)) {
+    if (frame - P.lastBump > 18) { sfx('bump'); P.lastBump = frame; }
+    const key = `${G.x},${G.y},${d}`;
+    if (ch === 'd' && P.doorKey !== key) { P.doorKey = key; run(() => houseDoor(nx)); }
+    return;
+  }
+  P.doorKey = null;
+  G.x = nx; G.y = ny; P.dx = dx; P.dy = dy; P.off = 16; P.steps++;
+}
+function onStep() {
+  const ch = tileAt(G.map, G.x, G.y);
+  if (G.map === 'town' && ch === 'D') run(() => warp('lab', 4, 7, 'up'));
+  else if (G.map === 'lab' && ch === 'E') run(() => warp('town', 5, 31, 'down'));
+  else if (ch === 'G' && G.flags.starter && Math.random() < 0.1) run(() => startBattle(rollWild()));
+}
+async function warp(map, x, y, dir) {
+  sfx('door'); await fadeOut();
+  G.map = map; G.x = x; G.y = y; G.dir = dir; P.off = 0;
+  await fadeIn();
+}
+function interact() {
+  const [dx, dy] = DIRS[G.dir], tx = G.x + dx, ty = G.y + dy, ch = tileAt(G.map, tx, ty);
+  if (G.map === 'lab') {
+    if (npcAt(tx, ty)) run(talkOak);
+    else if (ch === 'K') run(() => checkBall(tx - 3));
+    else if (ch === 'B') run(() => say("It's crammed full of POKéMON books!"));
+    else if (ch === 'C') run(() => say("It's a PC. There's an e-mail:\n'Catch every POKéMON you can find!' - OAK"));
+  } else {
+    if (SIGNS[`${tx},${ty}`]) run(() => say(SIGNS[`${tx},${ty}`]));
+    else if (ch === 'd') run(() => houseDoor(tx));
+    else if (ch === 'w') run(() => say('The water is crystal clear.'));
+    else if (ch === 'n') run(() => say("You peek through the window. It's cozy inside."));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Story scripts
+// ---------------------------------------------------------------------------
+async function gate() {
+  await say("OAK: Hey! Wait! Don't go out!");
+  await say("It's unsafe! Wild POKéMON live in the tall grass!");
+  await say("You need your own POKéMON for protection. Come to my LAB, south of town!");
+}
+async function houseDoor(x) {
+  if (x === 5) {
+    if (!G.flags.starter) { await say("MOM: Oh, " + G.name + "! PROF. OAK is waiting for you at his LAB, south of here."); return; }
+    await say(`MOM: ${G.name}! You and your POKéMON should take a quick rest.`);
+    sfx('heal'); await fadeOut(); healAll(); await wait(30); await fadeIn();
+    await say('Your POKéMON were fully healed!');
+    await say('MOM: Take care out there, dear!');
+  } else {
+    await say("It's BLUE's house. Nobody seems to be home.");
+  }
+}
+async function talkOak() {
+  if (!G.flags.starter) {
+    if (!G.flags.metOak) {
+      G.flags.metOak = true;
+      await say(`OAK: Ah, ${G.name}! There you are!`);
+      await say('On that table are four POKé BALLs, each with a POKéMON inside.');
+      await say('You may have one! Check a POKé BALL, or just tell me which one you want.');
+    }
+    await say('Which POKéMON will you choose?', { keep: true });
+    const i = await choose([...STARTERS, 'CANCEL'], { x: 72, y: 8, w: 88, h: 88 });
+    ui.dialog = null;
+    if (i >= 0 && i < 4) await offerStarter(i);
+    return;
+  }
+  await say(`OAK: ${G.name}! How are your POKéMON doing? Let me take a look...`);
+  sfx('heal'); healAll(); await wait(40);
+  await say('There! Your POKéMON are fully healed!');
+  if (G.balls < 5) { G.balls = 5; sfx('get'); await say(`${G.name} got some POKé BALLs! (Now ${G.balls})`); }
+  const n = G.flags.caught || 0;
+  await say(n ? `You've caught ${n} POKéMON so far. Splendid! Keep it up!` : 'Weaken a wild POKéMON, then throw a POKé BALL to catch it!');
+}
+async function checkBall(i) {
+  if (G.flags.starter) {
+    await say(i === G.flags.starterIdx ? "It's an empty spot on the table." : "That's PROF. OAK's POKéMON. Better leave it be.");
+    return;
+  }
+  await offerStarter(i);
+}
+async function offerStarter(i) {
+  const name = STARTERS[i];
+  ui.showcase = name;
+  const yes = await ask(`So! You want the ${SPECIES[name].desc} POKéMON, ${name}?`);
+  ui.showcase = null;
+  if (!yes) return;
+  G.party.push(makeMon(name, 5));
+  G.flags.starter = true; G.flags.starterIdx = i; G.flags.metOak = true;
+  sfx('get'); await say(`${G.name} received a ${name}!`);
+  await say(`OAK: ${name} looks happy to be with you!`);
+  await say('If a wild POKéMON appears, your POKéMON can battle it.');
+  await say('Weaken it first, then throw a POKé BALL to catch it!');
+  G.balls = 5; sfx('get'); await say(`${G.name} got 5 POKé BALLs!`);
+  await say('Now head north to ROUTE 1. Wild POKéMON hide in the tall grass!');
+  await say('Press START (ENTER) any time to check on your team.');
+}
+
+// ---------------------------------------------------------------------------
+// Menus: start menu, party, summary
+// ---------------------------------------------------------------------------
+async function startMenu() {
+  let i = 0;
+  while (true) {
+    i = await choose(['POKéMON', 'BAG', 'SAVE', 'EXIT'], { x: 88, y: 0, w: 72, idx: i });
+    if (i < 0 || i === 3) return;
+    if (i === 0) {
+      if (!G.party.length) await say("You don't have any POKéMON yet!");
+      else await partyMenuWorld();
+    } else if (i === 1) {
+      await say(G.balls ? `POKé BALL x${G.balls}` : 'Your BAG is empty.');
+    } else if (i === 2) {
+      if (await ask('Would you like to SAVE the game?')) {
+        if (saveGame()) { sfx('get'); await say(`${G.name} saved the game!`); }
+        else await say("Couldn't save. Your browser blocked storage.");
+      }
+    }
+  }
+}
+const partyCursor = m => { ui.partyIdx = m.idx; };
+async function partyMenuWorld() {
+  let idx = 0;
+  while (true) {
+    ui.overlay = 'party'; ui.partyIdx = idx;
+    say('Choose a POKéMON.', { keep: true });
+    idx = await choose(G.party.map(m => m.name), { idx, draw: partyCursor });
+    if (idx < 0) break;
+    ui.partyIdx = idx;
+    const sub = await choose(['SUMMARY', 'SWITCH', 'CANCEL'], { x: 88, y: 40, w: 72, h: 56 });
+    ui.dialog = null;
+    if (sub === 0) { ui.overlay = 'summary'; ui.summaryMon = G.party[idx]; await waitButton(); }
+    else if (sub === 1) {
+      if (idx === 0) await say(`${G.party[0].name} is already leading your team!`);
+      else { const [m] = G.party.splice(idx, 1); G.party.unshift(m); idx = 0; await say(`${m.name} will now lead your team!`); }
+    }
+  }
+  ui.overlay = null; ui.dialog = null;
+}
+async function partyPick(forced) {
+  ui.overlay = 'party'; ui.partyIdx = 0;
+  say(forced ? 'Bring out which POKéMON?' : 'Choose a POKéMON.', { keep: true });
+  const idx = await choose(G.party.map(m => m.name), { cancel: !forced, draw: partyCursor });
+  ui.overlay = null; ui.dialog = null;
+  return idx;
+}
+const pad3 = n => String(n).padStart(3, ' ');
+function hpBar(x, y, m, label = true) {
+  const bx = label ? x + 18 : x;
+  if (label) drawText('HP:', x, y);
+  rect(ctx, bx, y + 1, 50, 5, 3); rect(ctx, bx + 1, y + 2, 48, 3, 0);
+  const f = m.dhp > 0 ? Math.max(1, Math.ceil(48 * m.dhp / m.maxhp)) : 0;
+  rect(ctx, bx + 1, y + 2, f, 3, m.dhp / m.maxhp < 0.25 ? 3 : 2);
+}
+function drawParty() {
+  rect(ctx, 0, 0, 160, 96, 0);
+  G.party.forEach((m, i) => {
+    const y = i * 16;
+    drawSprite(MON_IMG[m.name], 12, y);
+    drawText(m.name, 32, y + 1);
+    drawText(':L' + m.lvl, 112, y + 1);
+    hpBar(32, y + 8, m, false);
+    drawText(m.hp > 0 ? `${pad3(m.hp)}/${pad3(m.maxhp)}` : 'FAINTED', 88, y + 8);
+    if (i === ui.partyIdx) drawText('▶', 2, y + 4);
+  });
+}
+function drawSummary() {
+  const m = ui.summaryMon, s = SPECIES[m.name];
+  box(0, 0, 160, 144);
+  drawSprite(MON_IMG[m.name], 8, 8, 3);
+  drawText(m.name, 64, 10);
+  drawText(':L' + m.lvl, 64, 20);
+  drawText('TYPE/', 64, 32);
+  s.types.forEach((t, i) => drawText(t, 72, 42 + i * 10));
+  hpBar(8, 62, m);
+  drawText(`${pad3(m.hp)}/${pad3(m.maxhp)}`, 80, 62);
+  [['ATTACK', m.atk], ['DEFENSE', m.def], ['SPEED', m.spd], ['EXP', m.exp], ['NEXT', (m.lvl + 1) ** 3 - m.exp]].forEach(([k, v], i) => {
+    drawText(k, 8, 78 + i * 11); drawText(pad3(v).padStart(4, ' '), 50, 78 + i * 11);
+  });
+  drawText('MOVES', 84, 78);
+  m.moves.forEach((mv, i) => drawText(mv, 84, 89 + i * 11));
+}
+
+// ---------------------------------------------------------------------------
+// Battle
+// ---------------------------------------------------------------------------
+const stages = () => ({ atk: 0, def: 0, spd: 0, acc: 0 });
+const stageMul = s => s >= 0 ? (2 + s) / 2 : 2 / (2 - s);
+const effStat = (p, k) => p.mon[k] * stageMul(p.st[k]);
+const nameOf = p => p === B.ally ? p.mon.name : 'Wild ' + p.mon.name;
+function rollWild() {
+  let r = Math.random() * WILD.reduce((s, w) => s + w[1], 0);
+  for (const [name, wgt, lo, hi] of WILD) { if ((r -= wgt) < 0) return makeMon(name, rand(lo, hi)); }
+  return makeMon('PIDGEY', 3);
+}
+async function startBattle(wild) {
+  sfx('encounter');
+  await tween(24, t => { ui.flash = Math.floor(t * 24 / 4) % 2 === 0; });
+  ui.flash = false;
+  await tween(24, t => { ui.wipe = t; });
+  B = { enemy: { mon: wild, st: stages() }, ally: null, eX: -112, eOffY: 0, eVis: true, eHide: false, eInfo: false,
+    aX: 0, aOffY: 0, aVis: false, aHide: false, aInfo: false, aPop: 0, ball: null, runTries: 0, lastAct: 0, lastMove: 0 };
+  G.scene = 'battle'; ui.wipe = 0;
+  await tween(36, t => { B.eX = Math.round(-112 * (1 - t)); });
+  B.eInfo = true;
+  await say(`Wild ${wild.name} appeared!`);
+  await sendOut(G.party.find(m => m.hp > 0));
+  const result = await battleLoop();
+  ui.dialog = null;
+  await fadeOut();
+  G.scene = 'world'; B = null;
+  if (result === 'lost') {
+    G.map = 'town'; G.x = 5; G.y = 24; G.dir = 'down'; P.off = 0; healAll();
+    await wait(20); await fadeIn();
+    await say(`MOM: Oh, ${G.name}! You look exhausted... Rest up, dear.`);
+    sfx('heal'); await say('Your POKéMON were fully healed!');
+  } else await fadeIn();
+}
+async function sendOut(mon) {
+  B.ally = { mon, st: stages() }; mon.dhp = mon.hp;
+  B.aVis = true; B.aHide = false; B.aOffY = 0; B.aX = 0; B.aPop = 0; B.aInfo = false;
+  await say(`Go! ${mon.name}!`, { keep: true });
+  sfx('throw');
+  for (const s of [1 / 3, 2 / 3, 1]) { B.aPop = s; await wait(5); }
+  B.aInfo = true; await wait(20); ui.dialog = null;
+}
+async function withdraw() {
+  await say(`Come back, ${B.ally.mon.name}!`, { keep: true });
+  B.aInfo = false;
+  for (const s of [2 / 3, 1 / 3]) { B.aPop = s; await wait(5); }
+  B.aVis = false; await wait(10); ui.dialog = null;
+}
+async function battleLoop() {
+  while (true) {
+    const a = B.ally, e = B.enemy;
+    const act = await choose(['FIGHT', 'PKMN', 'BALL', 'RUN'], { x: 64, y: 96, w: 96, h: 48, cols: 2, colW: 40, cancel: false, idx: B.lastAct, battle: true });
+    B.lastAct = act;
+    let move = null;
+    if (act === 0) {
+      const moves = a.mon.moves;
+      const mi = await choose(moves, { x: 40, y: 96, w: 120, h: 48, spacing: 10, idx: Math.min(B.lastMove, moves.length - 1),
+        extra: m => { box(0, 64, 72, 32); drawText('TYPE/', 8, 72); drawText(MOVES[moves[m.idx]].type, 16, 82); } });
+      if (mi < 0) continue;
+      B.lastMove = mi; move = moves[mi];
+    } else if (act === 1) {
+      const idx = await partyPick(false);
+      if (idx < 0) continue;
+      const m = G.party[idx];
+      if (m === a.mon) { await say(`${m.name} is already out!`); continue; }
+      if (m.hp <= 0) { await say("There's no will to fight!"); continue; }
+      await withdraw(); await sendOut(m);
+    } else if (act === 2) {
+      if (G.balls <= 0) { await say("You don't have any POKé BALLs!"); continue; }
+      if (await throwBall()) return 'caught';
+    } else {
+      if (await tryRun()) return 'ran';
+    }
+
+    const eMove = pick(e.mon.moves);
+    let order;
+    if (move) {
+      const pp = MOVES[move].prio || 0, ep = MOVES[eMove].prio || 0;
+      const as = effStat(B.ally, 'spd'), es = effStat(e, 'spd');
+      const allyFirst = pp !== ep ? pp > ep : as !== es ? as > es : Math.random() < 0.5;
+      order = allyFirst ? [[B.ally, e, move], [e, B.ally, eMove]] : [[e, B.ally, eMove], [B.ally, e, move]];
+    } else order = [[e, B.ally, eMove]];
+
+    for (const [u, t, mv] of order) {
+      if (u.mon.hp <= 0 || t.mon.hp <= 0) continue;
+      await useMove(u, t, mv);
+      if (e.mon.hp <= 0) { await enemyFainted(); return 'won'; }
+      if (B.ally.mon.hp <= 0) { if ((await allyFainted()) === 'blackout') return 'lost'; break; }
+    }
+  }
+}
+async function lunge(isAlly) {
+  await tween(6, t => { const o = Math.round(Math.sin(t * Math.PI) * 8); if (isAlly) B.aX = o; else B.eX = -o; });
+}
+async function blink(isAlly) {
+  for (let i = 0; i < 6; i++) { if (isAlly) B.aHide = !B.aHide; else B.eHide = !B.eHide; await wait(4); }
+  B.aHide = B.eHide = false;
+}
+async function shake(isAlly) {
+  await tween(16, t => { const o = Math.round(t * 16) % 4 < 2 ? 2 : -2; if (isAlly) B.aX = o; else B.eX = o; });
+  B.aX = B.eX = 0;
+}
+async function drainHP(m) {
+  const step = Math.max(1, Math.round(m.maxhp / 48));
+  while (m.dhp !== m.hp) { m.dhp = m.dhp > m.hp ? Math.max(m.hp, m.dhp - step) : Math.min(m.hp, m.dhp + step); await wait(2); }
+}
+async function useMove(u, t, mv) {
+  const M = MOVES[mv], isAlly = u === B.ally;
+  await say(`${nameOf(u)} used ${mv}!`, { keep: true });
+  await wait(8);
+  const accMul = u.st.acc >= 0 ? (3 + u.st.acc) / 3 : 3 / (3 - u.st.acc);
+  if (Math.random() * 100 >= M.acc * accMul) { ui.dialog = null; await say(`${nameOf(u)}'s attack missed!`); return; }
+  await lunge(isAlly);
+  if (M.pow) {
+    const crit = Math.random() < 1 / 16, eff = typeMul(M.type, SPECIES[t.mon.name].types);
+    const L = u.mon.lvl * (crit ? 2 : 1);
+    let dmg = Math.floor(Math.floor((2 * L / 5 + 2) * M.pow * effStat(u, 'atk') / effStat(t, 'def')) / 50) + 2;
+    if (SPECIES[u.mon.name].types.includes(M.type)) dmg = Math.floor(dmg * 1.5);
+    dmg = Math.max(1, Math.floor(dmg * eff * rand(217, 255) / 255));
+    sfx(eff > 1 ? 'super' : 'hit');
+    await blink(!isAlly);
+    t.mon.hp = Math.max(0, t.mon.hp - dmg);
+    await drainHP(t.mon);
+    ui.dialog = null;
+    if (crit) await say('A critical hit!');
+    if (eff > 1) await say("It's super effective!");
+    else if (eff < 1) await say("It's not very effective...");
+  } else {
+    const st = M.stat;
+    sfx('stat'); await shake(!isAlly);
+    ui.dialog = null;
+    if (t.st[st] <= -6) await say('Nothing happened!');
+    else { t.st[st]--; await say(`${nameOf(t)}'s ${STAT_NAME[st]} fell!`); }
+  }
+  ui.dialog = null;
+}
+async function enemyFainted() {
+  const e = B.enemy.mon, a = B.ally.mon;
+  sfx('faint');
+  await tween(16, t => { B.eOffY = Math.round(48 * t); });
+  B.eVis = false; B.eInfo = false;
+  await say(`Wild ${e.name} fainted!`);
+  const gain = Math.max(1, Math.floor(SPECIES[e.name].exp * e.lvl / 7));
+  await say(`${a.name} gained ${gain} EXP. Points!`);
+  a.exp += gain;
+  while (a.lvl < 100 && a.exp >= (a.lvl + 1) ** 3) {
+    const oldMax = a.maxhp;
+    a.lvl++; calcStats(a); a.hp += a.maxhp - oldMax; a.dhp = a.hp;
+    sfx('levelup'); await say(`${a.name} grew to level ${a.lvl}!`);
+  }
+}
+async function allyFainted() {
+  const a = B.ally.mon;
+  sfx('faint');
+  await tween(16, t => { B.aOffY = Math.round(48 * t); });
+  B.aVis = false; B.aInfo = false;
+  await say(`${a.name} fainted!`);
+  if (!G.party.some(m => m.hp > 0)) {
+    await say(`${G.name} is out of usable POKéMON!`);
+    await say(`${G.name} blacked out!`);
+    return 'blackout';
+  }
+  let idx;
+  while (true) {
+    idx = await partyPick(true);
+    if (idx >= 0 && G.party[idx].hp > 0) break;
+    await say("There's no will to fight!");
+  }
+  await sendOut(G.party[idx]);
+}
+async function tryRun() {
+  B.runTries++;
+  const ok = effStat(B.ally, 'spd') >= effStat(B.enemy, 'spd') || Math.random() < 0.3 + 0.25 * B.runTries;
+  if (ok) { sfx('run'); await say('Got away safely!'); return true; }
+  await say("Can't escape!");
+  return false;
+}
+async function throwBall() {
+  const m = B.enemy.mon;
+  G.balls--;
+  await say(`${G.name} used POKé BALL!`, { keep: true });
+  sfx('throw');
+  B.ball = { x: 24, y: 88, wob: 0 };
+  await tween(24, t => { B.ball.x = Math.round(24 + 92 * t); B.ball.y = Math.round(88 - 62 * t - 40 * Math.sin(Math.PI * t)); });
+  for (let i = 0; i < 3; i++) { B.eHide = true; await wait(3); B.eHide = false; await wait(3); }
+  B.eVis = false;
+  await tween(10, t => { B.ball.y = Math.round(26 + 12 * t); });
+  const a = Math.max(1, Math.floor((3 * m.maxhp - 2 * m.hp) * SPECIES[m.name].rate / (3 * m.maxhp)));
+  const p = Math.min(1, a / 255), caught = Math.random() < p;
+  const shakes = caught ? 3 : Math.min(2, Math.floor(Math.random() * 3 * Math.min(1, p * 2.5)));
+  for (let i = 0; i < shakes; i++) {
+    await wait(14); sfx('shake');
+    await tween(12, t => { B.ball.wob = Math.round(Math.sin(t * Math.PI * 2) * 3); });
+    B.ball.wob = 0;
+  }
+  await wait(16);
+  ui.dialog = null;
+  if (caught) {
+    sfx('caught');
+    G.flags.caught = (G.flags.caught || 0) + 1;
+    await say(`All right! ${m.name} was caught!`);
+    if (G.party.length < 6) { G.party.push(m); await say(`${m.name} joined your team!`); }
+    else { G.box.push(m); await say(`Your team is full. ${m.name} was sent to the PC.`); }
+    return true;
+  }
+  B.ball = null; B.eVis = true; sfx('hit');
+  await say(['Oh no! The POKéMON broke free!', 'Aww! It appeared to be caught!', 'Aargh! Almost had it!'][shakes]);
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+function playerPos() { return { x: G.x * 16 - P.dx * P.off, y: G.y * 16 - P.dy * P.off }; }
+function drawWorld() {
+  const m = MAPS[G.map], p = playerPos();
+  const cx = Math.max(0, Math.min(p.x - 64, m.w * 16 - 160)), cy = Math.max(0, Math.min(p.y - 64, m.h * 16 - 144));
+  const tx0 = Math.floor(cx / 16), ty0 = Math.floor(cy / 16);
+  for (let ty = ty0; ty <= ty0 + 9; ty++) for (let tx = tx0; tx <= tx0 + 10; tx++) ctx.drawImage(tileImg(tileAt(G.map, tx, ty)), tx * 16 - cx, ty * 16 - cy);
+  if (G.map === 'lab') {
+    for (let i = 0; i < 4; i++) if (!(G.flags.starter && G.flags.starterIdx === i)) drawSprite(BALL, (3 + i) * 16 + 4 - cx, 3 * 16 + 4 - cy);
+    drawSprite(OAK, 7 * 16 - cx, 2 * 16 - 4 - cy);
+  }
+  const fr = P.off > 8 ? (P.steps % 2 ? 2 : 1) : 0;
+  drawSprite(PL[G.dir][fr], p.x - cx, p.y - 4 - cy);
+  if (tileAt(G.map, G.x, G.y) === 'G' && P.off < 10) ctx.drawImage(T.G, 0, 8, 16, 8, G.x * 16 - cx, G.y * 16 + 8 - cy, 16, 8);
+}
+function drawBattle() {
+  const e = B.enemy.mon, a = B.ally && B.ally.mon;
+  if (B.eVis && !B.eHide) {
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 160, 54); ctx.clip();
+    drawSprite(MON_IMG[e.name], 100 + B.eX, 6 + B.eOffY, 3);
+    ctx.restore();
+  }
+  if (B.eInfo) {
+    drawText(e.name, 8, 4);
+    drawText(':L' + e.lvl, 40, 13);
+    hpBar(8, 22, e);
+    rect(ctx, 6, 14, 1, 17, 3); rect(ctx, 6, 30, 74, 1, 3); rect(ctx, 79, 29, 2, 2, 3);
+  }
+  if (a && B.aVis && !B.aHide && B.aPop > 0) {
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 160, 92); ctx.clip();
+    if (B.aPop >= 1) drawSprite(MON_IMG[a.name], 12 + B.aX, 44 + B.aOffY, 3, true);
+    else { const sc = Math.max(1, Math.round(3 * B.aPop)); drawSprite(MON_IMG[a.name], 36 - 8 * sc, 92 - 16 * sc, sc, true); }
+    ctx.restore();
+  }
+  if (a && B.aInfo) {
+    drawText(a.name, 80, 56);
+    drawText(':L' + a.lvl, 120, 65);
+    hpBar(80, 73, a);
+    drawText(`${pad3(a.dhp)}/${pad3(a.maxhp)}`, 106, 81);
+    rect(ctx, 152, 64, 1, 26, 3); rect(ctx, 78, 89, 75, 1, 3); rect(ctx, 77, 88, 2, 2, 3);
+  }
+  if (B.ball) drawSprite(BALL, B.ball.x + B.ball.wob, B.ball.y, 2);
+  box(0, 96, 160, 48);
+  if (!ui.dialog && ui.menu && ui.menu.battle) drawText(`BALLS x${G.balls}`, 8, 112);
+}
+function drawTitle() {
+  drawText('POKéMON', 19, 13, 1, 3);
+  drawText('POKéMON', 18, 12, 3, 3);
+  centerText('SIMPLE VERSION', 40, 2);
+  drawSprite(MON_IMG[STARTERS[Math.floor(frame / 120) % 4]], 56, 52, 3);
+  if (!ui.menu && Math.floor(frame / 30) % 2 === 0) centerText('PRESS START', 112);
+  if (!ui.menu) centerText('A FAN-MADE GAME', 132, 1);
+}
+function drawIntro() {
+  drawSprite(OAK, 56, 24, 3);
+  if (ui.introMon) drawSprite(MON_IMG[ui.introMon], 114, 56, 2, true);
+}
+function drawDialog() {
+  const d = ui.dialog, page = d.pages[d.page];
+  box(0, 96, 160, 48);
+  let rem = d.chars;
+  page.forEach((ln, i) => { drawText(ln.slice(0, Math.max(0, rem)), 8, 104 + i * 16); rem -= ln.length; });
+  const done = d.chars >= page.join('').length;
+  if (done && !(d.keep && d.page === d.pages.length - 1) && Math.floor(frame / 20) % 2 === 0) drawText('▼', 146, 132);
+}
+function drawMenu(m) {
+  if (m.draw) { m.draw(m); return; }
+  box(m.x, m.y, m.w, m.h);
+  const colW = m.colW || (m.w - 16) / m.cols;
+  m.opts.forEach((o, i) => {
+    const tx = m.x + 12 + (i % m.cols) * colW, ty = m.y + 8 + Math.floor(i / m.cols) * m.spacing;
+    drawText(o, tx, ty);
+    if (i === m.idx) drawText('▶', tx - 8, ty);
+  });
+  if (m.extra) m.extra(m);
+}
+function render() {
+  rect(ctx, 0, 0, 160, 144, 0);
+  if (G.scene === 'title') drawTitle();
+  else if (G.scene === 'intro') drawIntro();
+  else if (G.scene === 'world') drawWorld();
+  else if (G.scene === 'battle' && B) drawBattle();
+  if (ui.overlay === 'party') drawParty();
+  else if (ui.overlay === 'summary') drawSummary();
+  if (ui.showcase) { box(48, 4, 64, 64); drawSprite(MON_IMG[ui.showcase], 56, 12, 3); }
+  if (ui.dialog) drawDialog();
+  if (ui.menu) drawMenu(ui.menu);
+  if (ui.wipe > 0) { const w = Math.round(ui.wipe * 160); for (let i = 0; i < 9; i++) rect(ctx, i % 2 ? 160 - w : 0, i * 16, w, 16, 3); }
+  if (ui.flash) { ctx.globalAlpha = 0.8; rect(ctx, 0, 0, 160, 144, 3); ctx.globalAlpha = 1; }
+  if (ui.fade > 0) { ctx.globalAlpha = ui.fade; rect(ctx, 0, 0, 160, 144, 0); ctx.globalAlpha = 1; }
+  if (ui.toastT > 0) { box(0, 0, 70, 20); drawText(ui.toast, 7, 7); }
+}
+
+// ---------------------------------------------------------------------------
+// Save / load
+// ---------------------------------------------------------------------------
+const SAVE_KEY = 'pokemon-simple-game-save-v1';
+const strip = m => ({ name: m.name, lvl: m.lvl, exp: m.exp, hp: m.hp, moves: m.moves });
+function saveGame() {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ name: G.name, party: G.party.map(strip), box: G.box.map(strip), balls: G.balls, flags: G.flags, map: G.map, x: G.x, y: G.y, dir: G.dir }));
+    return true;
+  } catch (e) { return false; }
+}
+function hasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; } }
+function loadGame() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (!d || !Array.isArray(d.party)) return false;
+    Object.assign(G, newState(), d);
+    for (const m of [...G.party, ...G.box]) { calcStats(m); m.hp = Math.min(m.hp, m.maxhp); m.dhp = m.hp; }
+    return true;
+  } catch (e) { return false; }
+}
+
+// ---------------------------------------------------------------------------
+// Title & intro
+// ---------------------------------------------------------------------------
+async function main() {
+  while (true) {
+    G = newState(); P.off = 0;
+    await fadeIn();
+    await waitButton();
+    sfx('select');
+    if (hasSave()) {
+      const i = await choose(['NEW GAME', 'CONTINUE'], { x: 36, y: 100, w: 88, h: 40, cancel: false });
+      if (i === 1 && loadGame()) { await fadeOut(); G.scene = 'world'; await fadeIn(); return; }
+    }
+    await fadeOut();
+    await intro();
+    return;
+  }
+}
+async function intro() {
+  G = newState(); G.scene = 'intro';
+  await fadeIn();
+  await say('Hello there! Welcome to the world of POKéMON!');
+  await say('My name is OAK! People call me the POKéMON PROF!');
+  ui.introMon = 'PIKACHU';
+  await say('This world is inhabited by creatures called POKéMON!');
+  await say('For some people, POKéMON are pets. Others use them for battles.');
+  ui.introMon = null;
+  await say('First, what is your name?', { keep: true });
+  const n = await choose(['RED', 'ASH', 'JACK'], { x: 4, y: 8, w: 48, h: 56, cancel: false });
+  ui.dialog = null;
+  G.name = ['RED', 'ASH', 'JACK'][n];
+  await say(`Right! So your name is ${G.name}!`);
+  await say(`${G.name}! Your very own POKéMON legend is about to unfold!`);
+  await say('Come and see me at my LAB. It is just south of your house!');
+  await fadeOut();
+  G.scene = 'world';
+  await fadeIn();
+  await say("Today's the day! PROF. OAK is waiting at his LAB, the big building to the south.");
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+function fit() {
+  const extraW = 112, extraH = document.getElementById('shell').offsetHeight - cv.offsetHeight + document.getElementById('hint').offsetHeight + 48;
+  const s0 = Math.min((innerWidth - extraW) / 160, (innerHeight - extraH) / 144);
+  const s = s0 >= 2 ? Math.floor(s0) : Math.max(1, s0);
+  cv.style.width = Math.floor(160 * s) + 'px';
+  cv.style.height = Math.floor(144 * s) + 'px';
+}
+addEventListener('resize', fit);
+fit();
+
+let last = performance.now(), acc = 0;
+function loop(now) {
+  acc += Math.min(100, now - last); last = now;
+  while (acc >= 1000 / 60) { tick(); acc -= 1000 / 60; }
+  render();
+  requestAnimationFrame(loop);
+}
+ui.fade = 1;
+requestAnimationFrame(loop);
+run(main);
+</script>
+</body>
+</html>
