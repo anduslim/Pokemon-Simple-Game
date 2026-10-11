@@ -1100,9 +1100,10 @@ async function intro() {
   await say('For some people, POKéMON are pets. Others use them for battles.');
   ui.introMon = null;
   await say('First, what is your name?', { keep: true });
-  const n = await choose(['RED', 'ASH', 'JACK'], { x: 4, y: 8, w: 48, h: 56, cancel: false });
+  const names = ['RED', 'ASH', 'JACK', 'ZAYN'];
+  const n = await choose(names, { x: 4, y: 8, w: 48, h: 72, cancel: false });
   ui.dialog = null;
-  G.name = ['RED', 'ASH', 'JACK'][n];
+  G.name = names[n];
   await say(`Right! So your name is ${G.name}!`);
   await say(`${G.name}! Your very own POKéMON legend is about to unfold!`);
   await say('Come and see me at my LAB. It is just south of your house!');
