@@ -2,13 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#1b2620">
 <title>Pokémon Simple Game</title>
 <style>
+  :root { color-scheme: dark; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; min-height: 100%; background: #1b2620; color: #d9e4cf; font-family: system-ui, -apple-system, Segoe UI, sans-serif; }
-  body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
-  .shell { background: #cbc6ba; border-radius: 14px 14px 52px 14px; padding: 18px 18px 22px; box-shadow: 0 12px 30px rgba(0,0,0,.5), inset -4px -6px 0 #a7a296; }
+  html, body { margin: 0; height: 100%; background: #1b2620; color: #d9e4cf; font-family: system-ui, -apple-system, Segoe UI, sans-serif; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%; padding: 16px; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+  .shell { touch-action: none; -webkit-touch-callout: none; background: #cbc6ba; border-radius: 14px 14px 52px 14px; padding: 18px 18px 22px; box-shadow: 0 12px 30px rgba(0,0,0,.5), inset -4px -6px 0 #a7a296; }
   .bezel { background: #4f5263; border-radius: 10px 10px 32px 10px; padding: 18px 22px 20px; }
   canvas { display: block; width: 320px; height: 288px; image-rendering: pixelated; image-rendering: crisp-edges; background: #e0f8d0; }
   .label { margin-top: 10px; text-align: center; font: italic 700 13px/1 system-ui, sans-serif; letter-spacing: 2px; color: #2c3a8c; }
@@ -25,11 +29,12 @@
   .ss { display: flex; justify-content: center; gap: 22px; margin-top: 18px; }
   .ss button { width: 50px; height: 12px; border-radius: 6px; border: 0; background: #77767c; transform: rotate(-25deg); position: relative; }
   .ss button::after { content: attr(data-label); position: absolute; top: 16px; left: 0; right: 0; font-size: 9px; font-weight: 700; color: #3b3f73; letter-spacing: 1px; }
+  button { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: none; }
   button:active, button.on { filter: brightness(0.75); }
   .hint { margin-top: 14px; font-size: 13px; opacity: .75; text-align: center; line-height: 1.5; }
   kbd { background: #2d3a32; border-radius: 4px; padding: 1px 5px; font-family: inherit; }
   @media (hover: hover) and (pointer: fine) { .controls, .ss { display: none; } }
-  @media not ((hover: hover) and (pointer: fine)) { .hint { display: none; } }
+  @media (hover: none), (pointer: coarse) { .hint { display: none; } }
 </style>
 </head>
 <body>
