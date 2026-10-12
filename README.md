@@ -22,7 +22,9 @@ Open `index.html` in any modern browser.
 - Random wild encounters (Pidgey, Rattata, Caterpie, Weedle, and a rare Pikachu)
 - Turn-based battles with types, STAB, critical hits, stat-lowering moves, EXP and level-ups
 - Poké Balls with shake animations; caught Pokémon join your team (up to 6)
-- A start menu with your party, a summary screen, the bag, and saving (stored in your browser)
+- **Evolution**: all 8 families evolve (e.g. Charmander → Charmeleon at 12 → Charizard at 24, Caterpie → Metapod at 7 → Butterfree at 10). Hold or press B to stop an evolution; it tries again at the next level. Each evolution teaches a new move.
+- A start menu with your party, a summary screen, the bag, SAVE, and an AUTOSAVE switch
+- **Autosave** to the browser's local storage: every minute while exploring, after battles, healing and story events, and when you close the tab or switch apps
 - Healing at home (Mom) or in the lab (Oak, who also tops up your Poké Balls)
 
 Pokémon is © Nintendo / Game Freak / The Pokémon Company. This is a non-commercial fan project.

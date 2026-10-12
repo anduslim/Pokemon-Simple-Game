@@ -270,6 +270,78 @@ const SPECIES = {
       '.32223.32223....', '3222223322223...', '3212123212123...', '3222223222223...',
       '.32223.32223....', '.33333.33333....', '.3.3...3.3......', '................'] },
 };
+// Evolved forms. Several reuse their pre-evolution's art with a few rows redrawn.
+const recolor = (rows, map) => rows.map(r => [...r].map(c => map[c] ?? c).join(''));
+const BASE = n => SPECIES[n].art;
+Object.assign(SPECIES, {
+  IVYSAUR: { types: ['GRASS', 'POISON'], hp: 60, atk: 62, def: 63, spd: 60, rate: 45, exp: 141, moves: ['TACKLE', 'VINE WHIP', 'RAZOR LEAF'],
+    art: withRows(BASE('BULBASAUR'), { 0: '..33..3333..33..', 1: '.3223322223223..', 2: '.32223222232223.' }) },
+  VENUSAUR: { types: ['GRASS', 'POISON'], hp: 80, atk: 82, def: 83, spd: 80, rate: 45, exp: 208, moves: ['VINE WHIP', 'RAZOR LEAF', 'PETAL DANCE'],
+    art: withRows(BASE('BULBASAUR'), { 0: '.333..3333..333.', 1: '3202332222332023', 2: '3222322002232223', 3: '.33332222223333.' }) },
+  CHARMELEON: { types: ['FIRE'], hp: 58, atk: 64, def: 58, spd: 80, rate: 45, exp: 142, moves: ['SCRATCH', 'EMBER', 'SLASH'],
+    art: withRows(recolor(BASE('CHARMANDER'), { 1: '2' }), { 0: '....3333.3......', 1: '...3222233......' }) },
+  CHARIZARD: { types: ['FIRE', 'FLYING'], hp: 78, atk: 84, def: 78, spd: 100, rate: 45, exp: 209, moves: ['EMBER', 'SLASH', 'FLAMETHROWER'], art: [
+    '33...3333....33.', '323.311113..323.', '3223310113.3223.', '3222311111332223',
+    '3222231133222223', '.322223113222223', '..3222310013223.', '...33310001333..',
+    '....31000013....', '....31000013..3.', '...311000113.323', '...311111113.323',
+    '...31111111333..', '...311131113....', '...3333.3333....', '................'] },
+  WARTORTLE: { types: ['WATER'], hp: 59, atk: 63, def: 80, spd: 58, rate: 45, exp: 143, moves: ['TACKLE', 'WATER GUN', 'BITE'],
+    art: withRows(BASE('SQUIRTLE'), { 0: '.33.33333.33....', 1: '.3231111111323..', 11: '..322000223113..', 12: '...322222331113.', 13: '...3113.3113.33.' }) },
+  BLASTOISE: { types: ['WATER'], hp: 79, atk: 83, def: 100, spd: 78, rate: 45, exp: 210, moves: ['WATER GUN', 'BITE', 'HYDRO PUMP'], art: [
+    '....333333......', '...31111113.....', '..3131111313....', '..3111111113.33.',
+    '..31133331133223', '.3322222222223..', '311200000022113.', '311200000022113.',
+    '.3120000002213..', '..3200000023....', '..3220000223....', '..3222222223....',
+    '..31113311133...', '..3111.3111.....', '..3333.3333.....', '................'] },
+  RAICHU: { types: ['ELECTRIC'], hp: 60, atk: 90, def: 55, spd: 100, rate: 75, exp: 122, moves: ['THUNDERSHOCK', 'QUICK ATTACK', 'THUNDERBOLT'], art: [
+    '3.............3.', '33...........33.', '313.........313.', '.313.......313..',
+    '..31333333313...', '..32222222223...', '.3223222223223..', '.3222222222223..',
+    '.3112223222113..', '..32200000223...', '..32000000023..3', '.320000000023.33',
+    '.32000000002333.', '..3220000223....', '..3223333223....', '..333....333....'] },
+  PIDGEOTTO: { types: ['NORMAL', 'FLYING'], hp: 63, atk: 60, def: 55, spd: 71, rate: 120, exp: 113, moves: ['GUST', 'QUICK ATTACK', 'WING ATTACK'],
+    art: withRows(BASE('PIDGEY'), { 0: '.....3.33.......', 1: '....32333.......' }) },
+  PIDGEOT: { types: ['NORMAL', 'FLYING'], hp: 83, atk: 80, def: 75, spd: 91, rate: 45, exp: 172, moves: ['GUST', 'WING ATTACK', 'AGILITY'],
+    art: withRows(BASE('PIDGEY'), { 0: '......3333333...', 1: '.....31122223...' }) },
+  RATICATE: { types: ['NORMAL'], hp: 55, atk: 81, def: 60, spd: 97, rate: 127, exp: 116, moves: ['TACKLE', 'QUICK ATTACK', 'HYPER FANG'],
+    art: withRows(recolor(BASE('RATTATA'), { 1: '2' }), { 8: '.3003222222223..' }) },
+  METAPOD: { types: ['BUG'], hp: 50, atk: 20, def: 55, spd: 30, rate: 120, exp: 72, moves: ['TACKLE', 'HARDEN'], art: [
+    '................', '......3333......', '.....322223.....', '....32222223....',
+    '...3220222223...', '...3203222223...', '...3222222223...', '....322222223...',
+    '....3221222223..', '....32212222223.', '...32221222223..', '...3222122223...',
+    '....322212223...', '.....3222223....', '......33333.....', '................'] },
+  BUTTERFREE: { types: ['BUG', 'FLYING'], hp: 60, atk: 45, def: 50, spd: 70, rate: 45, exp: 160, moves: ['TACKLE', 'CONFUSION'], art: [
+    '....3....3......', '.....3..3.......', '.333.3333.333...', '30003311330003..',
+    '3000031013000003', '3000031113000003', '3020031113002003', '.30003111300003.',
+    '..333311133333..', '.30003111300003.', '3000031113000003', '3002003130020003',
+    '.30003...30003..', '..333.....333...', '................', '................'] },
+  KAKUNA: { types: ['BUG', 'POISON'], hp: 45, atk: 25, def: 50, spd: 35, rate: 120, exp: 71, moves: ['POISON STING', 'HARDEN'], art: [
+    '................', '.....3333.......', '....311113......', '...31111113.....',
+    '...310333013....', '...3111111113...', '..331111111133..', '...3111111113...',
+    '....311111113...', '....3111111113..', '....311111113...', '.....31111113...',
+    '.....3111113....', '......31113.....', '.......333......', '................'] },
+  BEEDRILL: { types: ['BUG', 'POISON'], hp: 65, atk: 80, def: 40, spd: 75, rate: 45, exp: 159, moves: ['POISON STING', 'TWINEEDLE'], art: [
+    '..3.......3.....', '...3.333.3......', '....31113.......', '.33.31013.33....',
+    '3003311133003...', '3000311130003...', '.300311130003...', '..3331313333....',
+    '.3..32223..3....', '33..31113..33...', '3...32223...3...', '....31113.......',
+    '....32223.......', '.....313........', '......3.........', '................'] },
+});
+// [evolves into, at level]. Levels are lower than the originals so evolving takes a few sessions, not weeks.
+const EVO = {
+  BULBASAUR: ['IVYSAUR', 12], IVYSAUR: ['VENUSAUR', 24],
+  CHARMANDER: ['CHARMELEON', 12], CHARMELEON: ['CHARIZARD', 24],
+  SQUIRTLE: ['WARTORTLE', 12], WARTORTLE: ['BLASTOISE', 24],
+  PIKACHU: ['RAICHU', 14],
+  PIDGEY: ['PIDGEOTTO', 12], PIDGEOTTO: ['PIDGEOT', 24],
+  RATTATA: ['RATICATE', 14],
+  CATERPIE: ['METAPOD', 7], METAPOD: ['BUTTERFREE', 10],
+  WEEDLE: ['KAKUNA', 7], KAKUNA: ['BEEDRILL', 10],
+};
+// Move learned on evolving into each species.
+const LEARN = {
+  IVYSAUR: 'RAZOR LEAF', VENUSAUR: 'PETAL DANCE', CHARMELEON: 'SLASH', CHARIZARD: 'FLAMETHROWER',
+  WARTORTLE: 'BITE', BLASTOISE: 'HYDRO PUMP', RAICHU: 'THUNDERBOLT', PIDGEOTTO: 'WING ATTACK',
+  PIDGEOT: 'AGILITY', RATICATE: 'HYPER FANG', METAPOD: 'HARDEN', BUTTERFREE: 'CONFUSION',
+  KAKUNA: 'HARDEN', BEEDRILL: 'TWINEEDLE',
+};
 const MON_IMG = {};
 for (const k in SPECIES) MON_IMG[k] = sprite(SPECIES[k].art);
 const STARTERS = ['BULBASAUR', 'CHARMANDER', 'SQUIRTLE', 'PIKACHU'];
@@ -289,6 +361,19 @@ const MOVES = {
   'TAIL WHIP': { type: 'NORMAL', stat: 'def', acc: 100 },
   'STRING SHOT': { type: 'BUG', stat: 'spd', acc: 95 },
   'SAND-ATTACK': { type: 'NORMAL', stat: 'acc', acc: 100 },
+  'RAZOR LEAF': { type: 'GRASS', pow: 55, acc: 95 },
+  'PETAL DANCE': { type: 'GRASS', pow: 70, acc: 100 },
+  'SLASH': { type: 'NORMAL', pow: 70, acc: 100 },
+  'FLAMETHROWER': { type: 'FIRE', pow: 90, acc: 100 },
+  'BITE': { type: 'NORMAL', pow: 60, acc: 100 },
+  'HYDRO PUMP': { type: 'WATER', pow: 110, acc: 80 },
+  'THUNDERBOLT': { type: 'ELECTRIC', pow: 90, acc: 100 },
+  'WING ATTACK': { type: 'FLYING', pow: 60, acc: 100 },
+  'HYPER FANG': { type: 'NORMAL', pow: 80, acc: 90 },
+  'CONFUSION': { type: 'PSYCHIC', pow: 50, acc: 100 },
+  'TWINEEDLE': { type: 'BUG', pow: 50, acc: 100 },
+  'HARDEN': { type: 'NORMAL', self: 'def', amt: 1 },
+  'AGILITY': { type: 'PSYCHIC', self: 'spd', amt: 2 },
 };
 const STAT_NAME = { atk: 'ATTACK', def: 'DEFENSE', spd: 'SPEED', acc: 'accuracy' };
 const EFFECT = {
@@ -299,6 +384,7 @@ const EFFECT = {
   FLYING: { GRASS: 2, BUG: 2, ELECTRIC: .5 },
   BUG: { GRASS: 2, POISON: 2, FIRE: .5, FLYING: .5 },
   POISON: { GRASS: 2, BUG: 2, POISON: .5 },
+  PSYCHIC: { POISON: 2, PSYCHIC: .5 },
   NORMAL: {},
 };
 const typeMul = (atk, defTypes) => defTypes.reduce((m, t) => m * (EFFECT[atk][t] ?? 1), 1);
@@ -518,6 +604,9 @@ function tick() {
     if (d.keep && !d.done && d.page === d.pages.length - 1 && d.chars >= tot) { d.done = true; d.res(); }
   }
   if (ui.toastT > 0) ui.toastT--;
+  if (ui.evo && ui.evo.flicker && pressed.B) ui.evo.cancel = true;
+  // Periodic autosave: once a minute, whenever the player is standing still in the overworld.
+  if (G.scene === 'world' && !busy && P.off === 0 && !ui.menu && !ui.dialog && frame - lastAutoSave >= AUTOSAVE_TICKS) { lastAutoSave = frame; autoSave(); }
 
   for (let i = waiters.length - 1; i >= 0; i--) if (--waiters[i].n <= 0) waiters.splice(i, 1)[0].r();
   for (const k in pressed) delete pressed[k];
@@ -579,7 +668,7 @@ function onStep() {
   const ch = tileAt(G.map, G.x, G.y);
   if (G.map === 'town' && ch === 'D') run(() => warp('lab', 4, 7, 'up'));
   else if (G.map === 'lab' && ch === 'E') run(() => warp('town', 5, 31, 'down'));
-  else if (ch === 'G' && G.flags.starter && Math.random() < 0.1) run(() => startBattle(rollWild()));
+  else if (ch === 'G' && G.flags.starter && G.party.some(m => m.hp > 0) && Math.random() < 0.1) run(() => startBattle(rollWild()));
 }
 async function warp(map, x, y, dir) {
   sfx('door'); await fadeOut();
@@ -616,6 +705,7 @@ async function houseDoor(x) {
     sfx('heal'); await fadeOut(); healAll(); await wait(30); await fadeIn();
     await say('Your POKéMON were fully healed!');
     await say('MOM: Take care out there, dear!');
+    autoSave();
   } else {
     await say("It's BLUE's house. Nobody seems to be home.");
   }
@@ -640,6 +730,8 @@ async function talkOak() {
   if (G.balls < 5) { G.balls = 5; sfx('get'); await say(`${G.name} got some POKé BALLs! (Now ${G.balls})`); }
   const n = G.flags.caught || 0;
   await say(n ? `You've caught ${n} POKéMON so far. Splendid! Keep it up!` : 'Weaken a wild POKéMON, then throw a POKé BALL to catch it!');
+  await say('Train hard! Many POKéMON evolve when they reach a certain level.');
+  autoSave();
 }
 async function checkBall(i) {
   if (G.flags.starter) {
@@ -663,6 +755,7 @@ async function offerStarter(i) {
   G.balls = 5; sfx('get'); await say(`${G.name} got 5 POKé BALLs!`);
   await say('Now head north to ROUTE 1. Wild POKéMON hide in the tall grass!');
   await say('Press START (ENTER) any time to check on your team.');
+  autoSave();
 }
 
 // ---------------------------------------------------------------------------
@@ -671,17 +764,24 @@ async function offerStarter(i) {
 async function startMenu() {
   let i = 0;
   while (true) {
-    i = await choose(['POKéMON', 'BAG', 'SAVE', 'EXIT'], { x: 88, y: 0, w: 72, idx: i });
-    if (i < 0 || i === 3) return;
+    i = await choose(['POKéMON', 'BAG', 'SAVE', 'AUTOSAVE', 'EXIT'], { x: 88, y: 0, w: 72, idx: i });
+    if (i < 0 || i === 4) return;
     if (i === 0) {
       if (!G.party.length) await say("You don't have any POKéMON yet!");
       else await partyMenuWorld();
     } else if (i === 1) {
       await say(G.balls ? `POKé BALL x${G.balls}` : 'Your BAG is empty.');
     } else if (i === 2) {
-      if (await ask('Would you like to SAVE the game?')) {
+      if (await ask(`${G.savedAt ? `Last saved ${ago(G.savedAt)}. ` : ''}SAVE the game now?`)) {
         if (saveGame()) { sfx('get'); await say(`${G.name} saved the game!`); }
         else await say("Couldn't save. Your browser blocked storage.");
+      }
+    } else if (i === 3) {
+      const on = autosaveOn();
+      if (await ask(`AUTOSAVE is ${on ? 'ON' : 'OFF'}. Turn it ${on ? 'OFF' : 'ON'}?`)) {
+        G.flags.autosave = !on;
+        saveGame();
+        await say(!on ? 'AUTOSAVE is ON. The game saves every minute, after battles, and when you leave the page.' : 'AUTOSAVE is OFF. Use SAVE to keep your progress.');
       }
     }
   }
@@ -757,8 +857,10 @@ const stageMul = s => s >= 0 ? (2 + s) / 2 : 2 / (2 - s);
 const effStat = (p, k) => p.mon[k] * stageMul(p.st[k]);
 const nameOf = p => p === B.ally ? p.mon.name : 'Wild ' + p.mon.name;
 function rollWild() {
+  // Wild Pokémon get a little tougher as your strongest team member levels up.
+  const bonus = Math.max(0, Math.floor((Math.max(5, ...G.party.map(m => m.lvl)) - 5) / 3));
   let r = Math.random() * WILD.reduce((s, w) => s + w[1], 0);
-  for (const [name, wgt, lo, hi] of WILD) { if ((r -= wgt) < 0) return makeMon(name, rand(lo, hi)); }
+  for (const [name, wgt, lo, hi] of WILD) { if ((r -= wgt) < 0) return makeMon(name, rand(lo, hi) + bonus); }
   return makeMon('PIDGEY', 3);
 }
 async function startBattle(wild) {
@@ -767,7 +869,7 @@ async function startBattle(wild) {
   ui.flash = false;
   await tween(24, t => { ui.wipe = t; });
   B = { enemy: { mon: wild, st: stages() }, ally: null, eX: -112, eOffY: 0, eVis: true, eHide: false, eInfo: false,
-    aX: 0, aOffY: 0, aVis: false, aHide: false, aInfo: false, aPop: 0, ball: null, runTries: 0, lastAct: 0, lastMove: 0 };
+    aX: 0, aOffY: 0, aVis: false, aHide: false, aInfo: false, aPop: 0, ball: null, runTries: 0, lastAct: 0, lastMove: 0, leveled: new Set() };
   G.scene = 'battle'; ui.wipe = 0;
   await tween(36, t => { B.eX = Math.round(-112 * (1 - t)); });
   B.eInfo = true;
@@ -776,13 +878,58 @@ async function startBattle(wild) {
   const result = await battleLoop();
   ui.dialog = null;
   await fadeOut();
-  G.scene = 'world'; B = null;
+  const evolving = result === 'won' ? [...B.leveled].filter(m => m.hp > 0 && EVO[m.name] && m.lvl >= EVO[m.name][1]) : [];
+  B = null;
+  for (const m of evolving) await evolve(m);
+  G.scene = 'world';
   if (result === 'lost') {
     G.map = 'town'; G.x = 5; G.y = 24; G.dir = 'down'; P.off = 0; healAll();
     await wait(20); await fadeIn();
     await say(`MOM: Oh, ${G.name}! You look exhausted... Rest up, dear.`);
     sfx('heal'); await say('Your POKéMON were fully healed!');
   } else await fadeIn();
+  autoSave();
+}
+async function evolve(m) {
+  const from = m.name, to = EVO[from][0];
+  G.scene = 'evolve'; ui.evo = { name: from, flicker: false, cancel: false };
+  await fadeIn();
+  await say(`What? ${from} is evolving!`, { keep: true });
+  // The sprite flickers between forms, faster and faster. Holding or pressing B stops it, like the originals.
+  ui.evo.flicker = true;
+  for (const n of [28, 24, 20, 18, 16, 14, 12, 10, 9, 8, 7, 6, 5, 5, 4, 4, 3, 3, 3, 2, 2, 2, 2, 2]) {
+    ui.evo.name = ui.evo.name === from ? to : from;
+    sfx('blip');
+    await wait(n);
+    if (ui.evo.cancel || held.B) break;
+  }
+  ui.evo.flicker = false;
+  ui.dialog = null;
+  if (ui.evo.cancel || held.B) {
+    ui.evo.name = from;
+    await say(`Huh? ${from} stopped evolving!`);
+  } else {
+    ui.evo.name = to;
+    ui.flash = true; await wait(4); ui.flash = false;
+    const oldMax = m.maxhp;
+    m.name = to; calcStats(m); m.hp = Math.max(1, m.hp + m.maxhp - oldMax); m.dhp = m.hp;
+    sfx('caught');
+    await say(`Congratulations! Your ${from} evolved into ${to}!`);
+    G.flags.evolved = (G.flags.evolved || 0) + 1;
+    if (LEARN[to]) await learnMove(m, LEARN[to]);
+  }
+  await fadeOut();
+  ui.evo = null;
+}
+async function learnMove(m, mv) {
+  if (m.moves.includes(mv)) return;
+  if (m.moves.length < 4) { m.moves.push(mv); sfx('levelup'); await say(`${m.name} learned ${mv}!`); return; }
+  // Team full of moves: replace a status move first, otherwise the weakest attack.
+  let i = m.moves.findIndex(x => !MOVES[x].pow);
+  if (i < 0) i = m.moves.reduce((best, x, j) => MOVES[x].pow < MOVES[m.moves[best]].pow ? j : best, 0);
+  const old = m.moves[i];
+  m.moves[i] = mv; sfx('levelup');
+  await say(`${m.name} forgot ${old} and learned ${mv}!`);
 }
 async function sendOut(mon) {
   B.ally = { mon, st: stages() }; mon.dhp = mon.hp;
@@ -806,7 +953,7 @@ async function battleLoop() {
     let move = null;
     if (act === 0) {
       const moves = a.mon.moves;
-      const mi = await choose(moves, { x: 40, y: 96, w: 120, h: 48, spacing: 10, idx: Math.min(B.lastMove, moves.length - 1),
+      const mi = await choose(moves, { x: 40, y: 96, w: 120, h: 48, spacing: 9, idx: Math.min(B.lastMove, moves.length - 1),
         extra: m => { box(0, 64, 72, 32); drawText('TYPE/', 8, 72); drawText(MOVES[moves[m.idx]].type, 16, 82); } });
       if (mi < 0) continue;
       B.lastMove = mi; move = moves[mi];
@@ -860,6 +1007,13 @@ async function useMove(u, t, mv) {
   const M = MOVES[mv], isAlly = u === B.ally;
   await say(`${nameOf(u)} used ${mv}!`, { keep: true });
   await wait(8);
+  if (M.self) {
+    sfx('stat'); await wait(10);
+    ui.dialog = null;
+    if (u.st[M.self] >= 6) await say('Nothing happened!');
+    else { u.st[M.self] = Math.min(6, u.st[M.self] + M.amt); await say(`${nameOf(u)}'s ${STAT_NAME[M.self]} ${M.amt > 1 ? 'greatly rose' : 'rose'}!`); }
+    return;
+  }
   const accMul = u.st.acc >= 0 ? (3 + u.st.acc) / 3 : 3 / (3 - u.st.acc);
   if (Math.random() * 100 >= M.acc * accMul) { ui.dialog = null; await say(`${nameOf(u)}'s attack missed!`); return; }
   await lunge(isAlly);
@@ -892,12 +1046,14 @@ async function enemyFainted() {
   await tween(16, t => { B.eOffY = Math.round(48 * t); });
   B.eVis = false; B.eInfo = false;
   await say(`Wild ${e.name} fainted!`);
-  const gain = Math.max(1, Math.floor(SPECIES[e.name].exp * e.lvl / 7));
+  // Double the classic EXP formula so levels (and evolutions) come at a friendlier pace.
+  const gain = Math.max(1, Math.floor(SPECIES[e.name].exp * e.lvl / 7) * 2);
   await say(`${a.name} gained ${gain} EXP. Points!`);
   a.exp += gain;
   while (a.lvl < 100 && a.exp >= (a.lvl + 1) ** 3) {
     const oldMax = a.maxhp;
     a.lvl++; calcStats(a); a.hp += a.maxhp - oldMax; a.dhp = a.hp;
+    B.leveled.add(a);
     sfx('levelup'); await say(`${a.name} grew to level ${a.lvl}!`);
   }
 }
@@ -1044,6 +1200,7 @@ function render() {
   else if (G.scene === 'intro') drawIntro();
   else if (G.scene === 'world') drawWorld();
   else if (G.scene === 'battle' && B) drawBattle();
+  else if (G.scene === 'evolve' && ui.evo) drawSprite(MON_IMG[ui.evo.name], 56, 24, 3);
   if (ui.overlay === 'party') drawParty();
   else if (ui.overlay === 'summary') drawSummary();
   if (ui.showcase) { box(48, 4, 64, 64); drawSprite(MON_IMG[ui.showcase], 56, 12, 3); }
@@ -1059,13 +1216,27 @@ function render() {
 // Save / load
 // ---------------------------------------------------------------------------
 const SAVE_KEY = 'pokemon-simple-game-save-v1';
+const AUTOSAVE_TICKS = 60 * 60;
+let lastAutoSave = 0;
 const strip = m => ({ name: m.name, lvl: m.lvl, exp: m.exp, hp: m.hp, moves: m.moves });
+const autosaveOn = () => G.flags.autosave !== false;
+const ago = t => { const s = Math.round((Date.now() - t) / 1000); return s < 60 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} hr ago`; };
 function saveGame() {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ name: G.name, party: G.party.map(strip), box: G.box.map(strip), balls: G.balls, flags: G.flags, map: G.map, x: G.x, y: G.y, dir: G.dir }));
+    G.savedAt = Date.now();
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ name: G.name, party: G.party.map(strip), box: G.box.map(strip), balls: G.balls, flags: G.flags, map: G.map, x: G.x, y: G.y, dir: G.dir, savedAt: G.savedAt }));
     return true;
   } catch (e) { return false; }
 }
+function autoSave() {
+  if (!G.flags.started || !autosaveOn()) return;
+  lastAutoSave = frame;
+  if (saveGame()) { ui.toast = 'SAVED'; ui.toastT = 50; }
+}
+// Closing the tab, switching apps or locking the phone saves too.
+const quickSave = () => { if (G.flags.started && autosaveOn() && G.scene !== 'evolve') saveGame(); };
+addEventListener('pagehide', quickSave);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') quickSave(); });
 function hasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; } }
 function loadGame() {
   try {
@@ -1073,6 +1244,9 @@ function loadGame() {
     if (!d || !Array.isArray(d.party)) return false;
     Object.assign(G, newState(), d);
     for (const m of [...G.party, ...G.box]) { calcStats(m); m.hp = Math.min(m.hp, m.maxhp); m.dhp = m.hp; }
+    // A save taken mid-battle could have every Pokémon fainted; wake up at home instead.
+    if (G.party.length && !G.party.some(m => m.hp > 0)) { healAll(); G.map = 'town'; G.x = 5; G.y = 24; G.dir = 'down'; }
+    G.flags.started = true;
     return true;
   } catch (e) { return false; }
 }
@@ -1115,7 +1289,9 @@ async function intro() {
   await fadeOut();
   G.scene = 'world';
   await fadeIn();
+  G.flags.started = true;
   await say("Today's the day! PROF. OAK is waiting at his LAB, the big building to the south.");
+  autoSave();
 }
 
 // ---------------------------------------------------------------------------
