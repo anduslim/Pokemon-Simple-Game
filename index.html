@@ -84,6 +84,7 @@ function blit(g, rows, ox = 0, oy = 0) {
 function sprite(rows) { const c = mk(rows[0].length, rows.length); blit(c.getContext('2d'), rows); return c; }
 const mirror = rows => rows.map(r => [...r].reverse().join(''));
 const withRows = (rows, repl) => rows.map((r, i) => repl[i] !== undefined ? repl[i] : r);
+const recolor = (rows, map) => rows.map(r => [...r].map(c => map[c] ?? c).join(''));
 function drawSprite(img, x, y, sc = 1, flip = false) {
   const w = img.width * sc, h = img.height * sc;
   x = Math.round(x); y = Math.round(y);
@@ -119,6 +120,7 @@ const FONT = {
   ':': '..... .xx.. .xx.. ..... .xx.. .xx.. .....', '/': '....x ...x. ...x. ..x.. .x... .x... x....',
   '(': '...x. ..x.. .x... .x... .x... ..x.. ...x.', ')': '.x... ..x.. ...x. ...x. ...x. ..x.. .x...',
   'é': '...x. ..x.. .xxx. x...x xxxxx x.... .xxx.',
+  '¥': 'x...x .x.x. xxxxx ..x.. xxxxx ..x.. ..x..',
   '▶': 'x.... xx... xxx.. xxxx. xxx.. xx... x....',
   '▼': '..... ..... xxxxx .xxx. ..x.. ..... .....',
 };
@@ -182,7 +184,12 @@ T.D = tile(g => { g.drawImage(T.l, 0, 0); rect(g, 2, 2, 12, 14, 3); rect(g, 3, 3
 const waterTile = o => tile(g => { rect(g, 0, 0, 16, 16, 1); for (const [x, y] of [[1, 3], [9, 3], [5, 9], [13, 9]]) { rect(g, (x + o) % 16, y, 3, 1, 0); rect(g, (x + o + 3) % 16, y + 1, 1, 1, 0); } });
 T.w = waterTile(0);
 const WATER2 = waterTile(2);
-const SOLID = new Set('TFSwrRhlndXBCK');
+T.c = tile(g => { rect(g, 0, 0, 16, 16, 2); rect(g, 0, 0, 16, 1, 1); for (const y of [4, 9]) rect(g, 0, y, 16, 1, 3); rect(g, 0, 14, 16, 2, 3); }); // Poké Center roof
+T.m = tile(g => { rect(g, 0, 0, 16, 16, 1); for (let x = 0; x < 16; x += 4) rect(g, x, 0, 2, 14, 2); rect(g, 0, 14, 16, 2, 3); });   // Poké Mart roof
+T.Q = tile(g => { g.drawImage(T.l, 0, 0); rect(g, 2, 2, 12, 11, 3); rect(g, 3, 3, 10, 9, 0); rect(g, 6, 4, 1, 7, 3); rect(g, 7, 4, 3, 1, 3); rect(g, 9, 5, 1, 2, 3); rect(g, 7, 7, 3, 1, 3); }); // "P" sign
+T.M = tile(g => { g.drawImage(T.l, 0, 0); rect(g, 2, 2, 12, 11, 3); rect(g, 3, 3, 10, 9, 1); rect(g, 5, 4, 1, 7, 3); rect(g, 10, 4, 1, 7, 3); rect(g, 6, 5, 1, 1, 3); rect(g, 9, 5, 1, 1, 3); rect(g, 7, 6, 2, 1, 3); }); // "M" sign
+T.k = tile(g => { floor(g); rect(g, 0, 2, 16, 12, 3); rect(g, 0, 3, 16, 10, 1); rect(g, 0, 3, 16, 2, 0); }); // shop counter
+const SOLID = new Set('TFSwrRhlndXBCKcmQMk');
 
 // ---------------------------------------------------------------------------
 // Character sprites
@@ -217,6 +224,20 @@ const PL = {
   right: [sprite(mirror(P_LEFT)), sprite(mirror(lstep)), sprite(mirror(lstep))],
 };
 const OAK = sprite(OAK_ROWS);
+const BLUE_ROWS = [
+  '..3.3.3333.3.3..', '..313311113313..', '..311111111113..', '.31111111111113.', '.31133333333113.',
+  ...P_DOWN.slice(5, 9), ...recolor(P_DOWN.slice(9), { 2: '1', 1: '2' })];
+const NURSE_ROWS = [
+  '....33333333....', '...3000330003...', '..300003300003..', '..311111111113..', '.31111111111113.',
+  '.31300000000313.', '.31303300330313.', '..300000000003..', '...3000000003...', '..330000000033..',
+  '.30300000000303.', '.30300000000303.', '..300000000003..', '...3000000003...', '...3333..3333...', '................'];
+const BUG_ROWS = [
+  '.....333333.....', '...3300000033...', '.33000000000033.', '3333333333333333', '..322222222223..',
+  ...P_DOWN.slice(5, 9), ...recolor(P_DOWN.slice(9), { 2: '1' })];
+const NPC_SPR = {
+  oak: OAK, blue: sprite(BLUE_ROWS), nurse: sprite(NURSE_ROWS), bug: sprite(BUG_ROWS),
+  clerk: sprite(recolor(P_DOWN, { 2: '1' })), man: sprite(recolor(P_DOWN, { 2: '0' })),
+};
 const OAK_BIG = sprite(shade(scale3x(OAK_ROWS)));
 const TRAINER_BACK = sprite(scale2x(P_UP));
 const BALL = sprite(['..3333..', '.322223.', '32222223', '33300333', '30000003', '30000003', '.300003.', '..3333..']);
@@ -277,7 +298,6 @@ const SPECIES = {
       '.32223.32223....', '.33333.33333....', '.3.3...3.3......', '................'] },
 };
 // Evolved forms. Several reuse their pre-evolution's art with a few rows redrawn.
-const recolor = (rows, map) => rows.map(r => [...r].map(c => map[c] ?? c).join(''));
 const BASE = n => SPECIES[n].art;
 Object.assign(SPECIES, {
   IVYSAUR: { types: ['GRASS', 'POISON'], hp: 60, atk: 62, def: 63, spd: 60, rate: 45, exp: 141, moves: ['TACKLE', 'VINE WHIP', 'RAZOR LEAF'],
@@ -746,6 +766,28 @@ return {
   },
 };
 })();
+const TRAINER_ART = (() => {
+  const E = (cx, cy, rx, ry, c, o = {}) => ({ t: 'e', cx, cy, rx, ry, c, ...o });
+  const P = (c, ...pts) => ({ t: 'p', c, pts });
+  const ME = (cx, cy, rx, ry, c) => ({ t: 'e', cx, cy, rx, ry, c, mark: true });
+  const ML = (x1, y1, x2, y2, c) => ({ t: 'l', x1, y1, x2, y2, c, mark: true });
+  const MX = (x, y, c) => ({ t: 'x', x, y, c, mark: true });
+  return {
+    BLUE: [
+      P(1, 10, 47, 13, 32, 35, 32, 38, 47), E(11, 41, 4, 7, 1, { rot: 0.2 }), E(37, 41, 4, 7, 1, { rot: -0.2 }),
+      P(2, 13, 22, 11, 8, 15, 11, 17, 2, 21, 8, 25, 0, 28, 7, 33, 3, 33, 10, 37, 9, 36, 17, 34, 22),
+      E(24, 20, 9, 10, 0), E(24, 31, 4, 2, 0, { n: true }),
+      P(2, 15, 16, 16, 9, 21, 12, 25, 8, 28, 12, 32, 9, 33, 16, 30, 13, 26, 14, 22, 13, 18, 14),
+      ML(19, 19, 21, 19, 3), ML(27, 19, 29, 19, 3), MX(20, 20, 3), MX(28, 20, 3),
+      ML(18, 17, 21, 17, 3), ML(27, 17, 30, 17, 3), ML(22, 25, 26, 24, 3)],
+    BUG: [
+      P(2, 38, 10, 40, 10, 43, 46, 41, 46), E(39, 8, 7, 6, 0), ML(34, 5, 44, 11, 1), ML(34, 11, 44, 5, 1),
+      P(1, 12, 47, 15, 32, 33, 32, 36, 47), E(13, 41, 4, 6, 1), E(35, 39, 4, 6, 1),
+      E(24, 21, 8, 9, 0), E(24, 12, 14, 3, 0), E(24, 9, 8, 5, 0), ME(24, 11, 8, 1, 1),
+      ME(20, 21, 1.5, 2, 3), ME(28, 21, 1.5, 2, 3), MX(19, 20, 0), MX(27, 20, 0), ML(22, 26, 26, 26, 3)],
+  };
+})();
+const TRAINER_BIG = { BLUE: sprite(rasterize(TRAINER_ART.BLUE, 48, 48)), BUG: sprite(rasterize(TRAINER_ART.BUG, 48, 48)) };
 // 16x16 icons for the party list; full-size fronts and backs for battles and big screens.
 const MON_IMG = {}, MON_BIG = {}, MON_BACK = {};
 for (const k in SPECIES) {
@@ -754,7 +796,10 @@ for (const k in SPECIES) {
   MON_BACK[k] = sprite(rasterize(ART[k].back, 32, 32));
 }
 const STARTERS = ['BULBASAUR', 'CHARMANDER', 'SQUIRTLE', 'PIKACHU'];
-const WILD = [['PIDGEY', 34, 2, 5], ['RATTATA', 34, 2, 4], ['CATERPIE', 15, 3, 5], ['WEEDLE', 14, 3, 5], ['PIKACHU', 3, 3, 5]];
+const WILD = {
+  town: [['PIDGEY', 34, 2, 5], ['RATTATA', 34, 2, 4], ['CATERPIE', 15, 3, 5], ['WEEDLE', 14, 3, 5], ['PIKACHU', 3, 3, 5]],
+  forest: [['CATERPIE', 28, 3, 5], ['WEEDLE', 28, 3, 5], ['METAPOD', 15, 4, 6], ['KAKUNA', 15, 4, 6], ['PIKACHU', 14, 3, 5]],
+};
 
 const MOVES = {
   'TACKLE': { type: 'NORMAL', pow: 35, acc: 95 },
@@ -783,7 +828,79 @@ const MOVES = {
   'TWINEEDLE': { type: 'BUG', pow: 50, acc: 100 },
   'HARDEN': { type: 'NORMAL', self: 'def', amt: 1 },
   'AGILITY': { type: 'PSYCHIC', self: 'spd', amt: 2 },
+  'THUNDER WAVE': { type: 'ELECTRIC', acc: 100, inflict: 'PAR' },
+  'POISONPOWDER': { type: 'POISON', acc: 75, inflict: 'PSN' },
+  'SLEEP POWDER': { type: 'GRASS', acc: 75, inflict: 'SLP' },
+  'STUN SPORE': { type: 'GRASS', acc: 75, inflict: 'PAR' },
+  'STRUGGLE': { type: 'NORMAL', pow: 50, acc: 100, recoil: true },
 };
+// Uses per move before a rest. Struggle is used automatically when every move is out of PP.
+const PP = {
+  'TACKLE': 35, 'SCRATCH': 35, 'QUICK ATTACK': 30, 'THUNDERSHOCK': 30, 'EMBER': 25, 'WATER GUN': 25, 'VINE WHIP': 15,
+  'GUST': 35, 'POISON STING': 35, 'GROWL': 40, 'TAIL WHIP': 30, 'STRING SHOT': 40, 'SAND-ATTACK': 15, 'RAZOR LEAF': 25,
+  'PETAL DANCE': 20, 'SLASH': 20, 'FLAMETHROWER': 15, 'BITE': 25, 'HYDRO PUMP': 5, 'THUNDERBOLT': 15, 'WING ATTACK': 35,
+  'HYPER FANG': 15, 'CONFUSION': 25, 'TWINEEDLE': 20, 'HARDEN': 30, 'AGILITY': 30, 'THUNDER WAVE': 20, 'POISONPOWDER': 35,
+  'SLEEP POWDER': 15, 'STUN SPORE': 30, 'STRUGGLE': 99,
+};
+for (const k in MOVES) MOVES[k].pp = PP[k];
+// Chance of a side effect after a hit: status (PSN, PAR, BRN) or confusion.
+Object.assign(MOVES['THUNDERSHOCK'], { eff: 'PAR', chance: 10 }); Object.assign(MOVES['THUNDERBOLT'], { eff: 'PAR', chance: 10 });
+Object.assign(MOVES['EMBER'], { eff: 'BRN', chance: 10 }); Object.assign(MOVES['FLAMETHROWER'], { eff: 'BRN', chance: 10 });
+Object.assign(MOVES['POISON STING'], { eff: 'PSN', chance: 30 }); Object.assign(MOVES['TWINEEDLE'], { eff: 'PSN', chance: 20 });
+Object.assign(MOVES['CONFUSION'], { eff: 'CONF', chance: 10 });
+// Moves learned by levelling up (on top of the move each evolution teaches).
+const LEVEL_LEARN = {
+  BULBASAUR: { 9: 'POISONPOWDER' }, IVYSAUR: { 9: 'POISONPOWDER', 15: 'SLEEP POWDER' }, VENUSAUR: { 9: 'POISONPOWDER', 15: 'SLEEP POWDER' },
+  PIKACHU: { 9: 'THUNDER WAVE' }, RAICHU: { 9: 'THUNDER WAVE' },
+  PIDGEY: { 9: 'QUICK ATTACK' }, PIDGEOTTO: { 9: 'QUICK ATTACK' },
+  BUTTERFREE: { 12: 'STUN SPORE', 14: 'SLEEP POWDER' },
+  CHARMANDER: { 10: 'SCRATCH' }, SQUIRTLE: { 10: 'BITE' }, CHARMELEON: { 16: 'FLAMETHROWER' }, WARTORTLE: { 16: 'BITE' },
+};
+const STATUS_TEXT = { PSN: 'was poisoned!', PAR: 'is paralyzed! It may not attack!', BRN: 'was burned!', SLP: 'fell asleep!' };
+const STATUS_IMMUNE = { PSN: 'POISON', BRN: 'FIRE', PAR: 'ELECTRIC' };
+
+// ---------------------------------------------------------------------------
+// Items, the Mart's stock, and the Pokédex
+// ---------------------------------------------------------------------------
+const ITEMS = {
+  'POKé BALL': { price: 200, ball: 1 }, 'GREAT BALL': { price: 600, ball: 1.5 },
+  'POTION': { price: 300, heal: 20 }, 'SUPER POTION': { price: 700, heal: 50 },
+  'ANTIDOTE': { price: 100, cure: 'PSN' }, 'PARLYZ HEAL': { price: 200, cure: 'PAR' },
+  'AWAKENING': { price: 250, cure: 'SLP' }, 'BURN HEAL': { price: 250, cure: 'BRN' },
+};
+const MART = Object.keys(ITEMS);
+const itemCount = n => G.bag[n] || 0;
+const addItem = (n, k = 1) => { G.bag[n] = itemCount(n) + k; };
+const takeItem = (n, k = 1) => { G.bag[n] = itemCount(n) - k; if (G.bag[n] <= 0) delete G.bag[n]; };
+const bagList = () => MART.filter(n => itemCount(n) > 0);
+// [number, kind, height m, weight kg, entry]
+const DEX = {
+  BULBASAUR: [1, 'SEED', 0.7, 6.9, 'It carries a plant bulb on its back from birth. The bulb soaks up sunlight to grow.'],
+  IVYSAUR: [2, 'SEED', 1.0, 13.0, 'The bud on its back swells as it gets stronger. It needs lots of sun to bloom.'],
+  VENUSAUR: [3, 'SEED', 2.0, 100.0, 'Its big flower gives off a calming scent. It basks in sunshine to recover.'],
+  CHARMANDER: [4, 'LIZARD', 0.6, 8.5, 'The flame on its tail shows how it feels. It burns brighter when it is happy.'],
+  CHARMELEON: [5, 'FLAME', 1.1, 19.0, 'It swings its blazing tail at foes. It gets fierce when it battles.'],
+  CHARIZARD: [6, 'FLAME', 1.7, 90.5, 'It flies high into the sky. Its fiery breath can melt almost anything.'],
+  SQUIRTLE: [7, 'TINY TURTLE', 0.5, 9.0, 'It hides in its shell for safety, then sprays water at foes when they let up.'],
+  WARTORTLE: [8, 'TURTLE', 1.0, 22.5, 'Its furry tail and ears help it balance while it swims at great speed.'],
+  BLASTOISE: [9, 'SHELLFISH', 1.6, 85.5, 'The cannons on its shell blast jets of water strong enough to punch holes.'],
+  CATERPIE: [10, 'WORM', 0.3, 2.9, 'Its feet have suction cups, so it can climb any tree. It eats leaves all day.'],
+  METAPOD: [11, 'COCOON', 0.7, 9.9, 'Its shell is hard as iron. It stays still while its body changes inside.'],
+  BUTTERFREE: [12, 'BUTTERFLY', 1.1, 32.0, 'Its wings are covered in powder that keeps rain off. It loves flower nectar.'],
+  WEEDLE: [13, 'HAIRY BUG', 0.3, 3.2, 'It has a sharp, poisonous stinger on its head. It hides in grass and trees.'],
+  KAKUNA: [14, 'COCOON', 0.6, 10.0, 'It barely moves while it waits to evolve. It can harden its shell for safety.'],
+  BEEDRILL: [15, 'POISON BEE', 1.0, 29.5, 'It flies very fast and attacks with the poisonous stingers on its arms.'],
+  PIDGEY: [16, 'TINY BIRD', 0.3, 1.8, 'A gentle bird that would rather hide than fight. It kicks up sand to escape.'],
+  PIDGEOTTO: [17, 'BIRD', 1.1, 30.0, 'It guards a wide territory and swoops on prey with its sharp claws.'],
+  PIDGEOT: [18, 'BIRD', 1.5, 39.5, 'Its lovely plume flows as it flies faster than sound across the sky.'],
+  RATTATA: [19, 'MOUSE', 0.3, 3.5, 'It lives almost anywhere. Its front teeth never stop growing, so it gnaws.'],
+  RATICATE: [20, 'MOUSE', 0.7, 18.5, 'It uses its whiskers to keep its balance and its big fangs to gnaw.'],
+  PIKACHU: [25, 'MOUSE', 0.4, 6.0, 'It stores electricity in its cheeks. Groups of them can cause storms.'],
+  RAICHU: [26, 'MOUSE', 0.8, 30.0, 'Its long tail grounds it while it builds up a powerful electric charge.'],
+};
+const DEX_ORDER = Object.keys(DEX).sort((a, b) => DEX[a][0] - DEX[b][0]);
+function see(name) { G.dex.seen[name] = 1; }
+function own(name) { G.dex.seen[name] = 1; G.dex.own[name] = 1; }
 const STAT_NAME = { atk: 'ATTACK', def: 'DEFENSE', spd: 'SPEED', acc: 'accuracy' };
 const EFFECT = {
   FIRE: { GRASS: 2, BUG: 2, WATER: .5, FIRE: .5 },
@@ -804,11 +921,15 @@ function calcStats(m) {
   for (const k of ['atk', 'def', 'spd']) m[k] = Math.floor((s[k] * 2 + 15) * m.lvl / 100) + 5;
 }
 function makeMon(name, lvl) {
-  const m = { name, lvl, exp: lvl ** 3, moves: SPECIES[name].moves.slice() };
+  const m = { name, lvl, exp: lvl ** 3, moves: SPECIES[name].moves.slice(), status: null };
+  // Wild and trainer Pokémon also know any level-up moves they have reached.
+  for (const [l, mv] of Object.entries(LEVEL_LEARN[name] || {})) if (lvl >= +l && !m.moves.includes(mv) && m.moves.length < 4) m.moves.push(mv);
+  m.pp = m.moves.map(mv => MOVES[mv].pp);
   calcStats(m); m.hp = m.dhp = m.maxhp;
   return m;
 }
-const healAll = () => G.party.forEach(m => { m.hp = m.dhp = m.maxhp; });
+const healMon = m => { m.hp = m.dhp = m.maxhp; m.status = null; m.pp = m.moves.map(mv => MOVES[mv].pp); };
+const healAll = () => G.party.forEach(healMon);
 const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
@@ -817,7 +938,7 @@ const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 // ---------------------------------------------------------------------------
 const MAPS = {
   town: { rows: [
-    'TTTTTTTTTTTTTTTTTTTT', // 0  ROUTE 1
+    'TTTTTTTT,,,,TTTTTTTT', // 0  ROUTE 1 (north edge leads to VIRIDIAN CITY)
     'TTTTTTTT,,,,TTTTTTTT',
     'TTGGGG..,S,,..GGGGTT',
     'TTGGGG..,,,,..GGGGTT',
@@ -853,7 +974,7 @@ const MAPS = {
     'TT.ff.....,,..ff..TT',
     'TT........,,......TT',
     'TTwwwwwwwwwwwwwwwwTT',
-    'TTTTTTTTTTTTTTTTTTTT'], edge: 'T' },
+    'TTTTTTTTTTTTTTTTTTTT'], edge: 'T', north: 'viridian', warps: { '5,30': ['lab', 4, 7, 'up'] } },
   lab: { rows: [
     'XBBBXXCCCX',
     'X________X',
@@ -863,15 +984,105 @@ const MAPS = {
     'X________X',
     'XBB____BBX',
     'X________X',
-    'XXXXEEXXXX'], edge: 'X' },
+    'XXXXEEXXXX'], edge: 'X', warps: { '4,8': ['town', 5, 31, 'down'], '5,8': ['town', 5, 31, 'down'] } },
+  viridian: { rows: [
+    'TTTTTTTT,,,,TTTTTTTT', // north edge leads to VIRIDIAN FOREST
+    'TT......,,,,......TT',
+    'TT.rrrr.,,,,......TT',
+    'TT.rrrr.,,,,.cccc.TT',
+    'TT.hndh.,,,,.cccc.TT',
+    'TT...,..,,,,.lQDl.TT',
+    'TT...,,,,,,,,,,,,.TT',
+    'TT..ff..,,,,..ff..TT',
+    'TT......,,,,......TT',
+    'TT.mmmm.,,,,..ww..TT',
+    'TT.lMDl.,,,,.wwww.TT',
+    'TT...,,,,,,,..ww..TT',
+    'TT......,,,,......TT',
+    'TT.S....,,,,..f...TT',
+    'TT......,,,,......TT',
+    'TTTTTTTT,,,,TTTTTTTT'], edge: 'T', north: 'forest', south: 'town',
+    warps: { '15,5': ['center', 4, 6, 'up'], '5,10': ['mart', 4, 6, 'up'] } },
+  forest: { rows: [
+    'TTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTT.S..TTTTTTTT',
+    'TTTTTTTT....TTTTTTTT',
+    'TTGGGGG.....GGGGGGTT',
+    'TTGGGGG..TT.GGGGGGTT',
+    'TT.......TT.....GGTT',
+    'TT.TTTTTTTTTTTT.GGTT',
+    'TT.TTTTTTTTTTTT...TT',
+    'TTGGGGG......TT...TT',
+    'TTGGGGG.GGGG.TT.TTTT',
+    'TT......GGGG.TT.TTTT',
+    'TTTTTT..GGGG......TT',
+    'TTTTTT..TTTTTTTT..TT',
+    'TT......TTTTTTTT..TT',
+    'TT.GGGGGGG....GG..TT',
+    'TT.GGGGGGG....GG..TT',
+    'TT.......TTTT.GG..TT',
+    'TTTTTTT..TTTT.....TT',
+    'TTTTTTT.....TTTTTTTT',
+    'TTTTTTTT,,,,TTTTTTTT'], edge: 'T', south: 'viridian' },
+  center: { rows: [
+    'XXXXXXXXXX',
+    'XBB___C_BX',
+    'X________X',
+    'X_kkkkkk_X',
+    'X________X',
+    'X________X',
+    'X________X',
+    'XXXXEEXXXX'], edge: 'X', warps: { '4,7': ['viridian', 15, 6, 'down'], '5,7': ['viridian', 15, 6, 'down'] } },
+  mart: { rows: [
+    'XXXXXXXXXX',
+    'XBBB__BBBX',
+    'X________X',
+    'Xkkk_____X',
+    'X________X',
+    'X____BB__X',
+    'X________X',
+    'XXXXEEXXXX'], edge: 'X', warps: { '4,7': ['viridian', 5, 11, 'down'], '5,7': ['viridian', 5, 11, 'down'] } },
 };
 for (const k in MAPS) { MAPS[k].w = MAPS[k].rows[0].length; MAPS[k].h = MAPS[k].rows.length; }
+// People and items on each map. A trainer spots you when you walk into their line of sight.
+const BUG_TEAMS = {
+  rick: { name: 'BUG CATCHER RICK', spr: 'BUG', team: () => [makeMon('WEEDLE', 6), makeMon('CATERPIE', 6)], prize: 60,
+    intro: "Hey! You have POKéMON! Come on, let's battle!", win: "No way! CATERPIE couldn't cut it!", after: "Shh! You'll scare the bugs away!" },
+  doug: { name: 'BUG CATCHER DOUG', spr: 'BUG', team: () => [makeMon('WEEDLE', 7), makeMon('KAKUNA', 7), makeMon('WEEDLE', 7)], prize: 70,
+    intro: 'My bug POKéMON are the best in the forest! Want to see?', win: 'Huh? I ran out of POKéMON!', after: "I'll catch tougher bugs next time." },
+  sammy: { name: 'BUG CATCHER SAMMY', spr: 'BUG', team: () => [makeMon('METAPOD', 8), makeMon('CATERPIE', 8)], prize: 80,
+    intro: 'This forest is full of bugs. I caught a few already!', win: 'My bugs need more training!', after: 'Have you seen a PIKACHU? They live deep in this forest!' },
+};
+MAPS.lab.npcs = [
+  { id: 'oak', x: 7, y: 2, spr: 'oak', talk: () => talkOak() },
+  { id: 'blueLab', x: 8, y: 5, spr: 'blue', show: () => !G.flags.rivalLeft, talk: () => say("BLUE: Heh, I don't need to be greedy like you! Go ahead and choose first.") },
+];
+MAPS.viridian.npcs = [
+  { id: 'oldman', x: 12, y: 8, spr: 'man', talk: () => say('The POKéMON CENTER heals your team for free. The MART sells POTIONs and POKé BALLs!') },
+  { id: 'rival2', x: 10, y: 1, spr: 'blue', show: () => G.flags.starter && !G.flags.beat.rival2, talk: () => rival2() },
+];
+MAPS.forest.npcs = [
+  { id: 'rick', x: 2, y: 13, spr: 'bug', dir: 'right', range: 5, trainer: BUG_TEAMS.rick },
+  { id: 'doug', x: 12, y: 8, spr: 'bug', dir: 'left', range: 5, trainer: BUG_TEAMS.doug },
+  { id: 'sammy', x: 17, y: 8, spr: 'bug', dir: 'left', range: 3, trainer: BUG_TEAMS.sammy },
+  { id: 'itemPotion', x: 2, y: 5, item: 'POTION' },
+  { id: 'itemAntidote', x: 17, y: 16, item: 'ANTIDOTE' },
+  { id: 'itemBall', x: 7, y: 3, item: 'POKé BALL' },
+];
+MAPS.center.npcs = [{ id: 'nurse', x: 4, y: 2, spr: 'nurse', talk: () => talkNurse() }];
+MAPS.mart.npcs = [{ id: 'clerk', x: 2, y: 2, spr: 'clerk', talk: () => talkClerk() }];
+const npcList = map => (MAPS[map].npcs || []).filter(n => (!n.show || n.show()) && !(n.item && G.flags['got_' + n.id]));
 function tileAt(map, x, y) { const m = MAPS[map]; return (x < 0 || y < 0 || x >= m.w || y >= m.h) ? m.edge : m.rows[y][x]; }
 const tileImg = ch => (ch === 'w' && (frame >> 5) & 1) ? WATER2 : (T[ch] || T['.']);
+const OPPOSITE = { up: 'down', down: 'up', left: 'right', right: 'left' };
 const SIGNS = {
-  '13,32': 'PALLET TOWN\nShades of your journey await!',
-  '7,17': 'ROUTE 1\nPALLET TOWN - VIRIDIAN CITY',
-  '9,2': 'VIRIDIAN CITY is just ahead... but fallen trees block the road for now!',
+  town: {
+    '13,32': 'PALLET TOWN\nShades of your journey await!',
+    '7,17': 'ROUTE 1\nPALLET TOWN - VIRIDIAN CITY',
+    '9,2': 'VIRIDIAN CITY is just to the north!',
+  },
+  viridian: { '3,13': 'VIRIDIAN CITY\nA green, quiet town by the forest.', '14,5': 'POKéMON CENTER\nHeal your POKéMON for free!', '4,10': 'POKé MART\nYour POKéMON supply store.' },
+  forest: { '9,1': 'PEWTER CITY lies past the forest... but this exit is still being built!' },
 };
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
@@ -880,11 +1091,13 @@ const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 // ---------------------------------------------------------------------------
 let G;
 function newState() {
-  return { scene: 'title', name: 'RED', party: [], box: [], balls: 0, flags: {}, map: 'town', x: 5, y: 24, dir: 'down' };
+  return { scene: 'title', name: 'RED', party: [], box: [], money: 3000, bag: {}, dex: { seen: {}, own: {} }, lastHeal: null,
+    flags: { beat: {} }, map: 'town', x: 5, y: 24, dir: 'down' };
 }
 G = newState();
 const P = { off: 0, dx: 0, dy: 0, steps: 0, turn: 0, lastBump: -99, doorKey: null };
-const ui = { dialog: null, menu: null, waitBtn: null, overlay: null, showcase: null, fade: 0, flash: false, wipe: 0, toast: null, toastT: 0, partyIdx: 0, introMon: null };
+const ui = { dialog: null, menu: null, waitBtn: null, overlay: null, showcase: null, fade: 0, flash: false, wipe: 0, toast: null, toastT: 0, partyIdx: 0, introMon: null,
+  qty: null, money: false, emote: null, dexIdx: 0 };
 let B = null;
 let busy = 0, frame = 0;
 
@@ -950,6 +1163,16 @@ const SONGS = {
       bounce('A2', 'A3'), bounce('G2', 'G3'), bounce('F2', 'F3'), bounce('E2', 'E3')] },
   evolve: { bpm: 120, loop: true, lead: ['E5:2 G5:2 B5:4', 'C6:2 B5:2 G5:4', 'A5:2 C6:2 E6:4', 'D#6:4 B5:4'],
     bass: ['E2:4 B2:4', 'C3:4 G2:4', 'A2:4 E3:4', 'B2:4 F#2:4'] },
+  forest: { bpm: 100, loop: true, lead: [
+    'E5:3 D5:1 C5:2 B4:2', 'A4:4 -:2 E5:2', 'F5:3 E5:1 D5:2 C5:2', 'B4:4 -:2 G#4:2',
+    'A4:2 C5:2 E5:2 A5:2', 'G5:3 F5:1 E5:4', 'D5:2 F5:2 E5:2 C5:2', 'B4:6 -:2'],
+    bass: [walk('A2', 'E3', 'A2', 'E3'), walk('A2', 'E3', 'A2', 'E3'), walk('D3', 'A2', 'D3', 'A2'), walk('E2', 'B2', 'E2', 'G#2'),
+      walk('A2', 'E3', 'A2', 'E3'), walk('C3', 'G2', 'C3', 'G2'), walk('D3', 'A2', 'F2', 'A2'), walk('E2', 'B2', 'E2', 'B2')] },
+  center: { bpm: 120, loop: true, lead: [
+    'E5:2 G5:2 C6:2 G5:2', 'A5:3 G5:1 E5:4', 'F5:2 A5:2 D6:2 A5:2', 'G5:6 -:2',
+    'E5:2 G5:2 C6:2 E6:2', 'D6:3 C6:1 A5:4', 'F5:2 E5:2 D5:2 G5:2', 'C6:6 -:2'],
+    bass: [walk('C3', 'G2', 'C3', 'G2'), walk('A2', 'E3', 'A2', 'E3'), walk('F2', 'C3', 'F2', 'C3'), walk('G2', 'D3', 'G2', 'D3'),
+      walk('C3', 'G2', 'C3', 'G2'), walk('F2', 'C3', 'F2', 'C3'), walk('G2', 'D3', 'G2', 'B2'), walk('C3', 'G2', 'C3', '-')] },
   victory: { bpm: 150, loop: false, lead: ['G5:1 G5:1 G5:1 C6:3 A5:1 B5:1', 'C6:6 -:2'], bass: ['C3:3 C3:3 F3:2', 'G3:2 C3:6'] },
 };
 for (const k in SONGS) {
@@ -1002,7 +1225,9 @@ function currentTrack() {
   if (G.scene === 'title') return 'title';
   if (G.scene === 'evolve') return 'evolve';
   if (G.scene === 'battle' || ui.battleIntro) return B && B.victory ? 'victory' : 'battle';
-  if (G.scene === 'intro' || G.map === 'lab') return 'town';
+  if (G.scene === 'intro' || G.map === 'lab' || G.map === 'viridian') return 'town';
+  if (G.map === 'center' || G.map === 'mart') return 'center';
+  if (G.map === 'forest') return 'forest';
   return G.y <= 19 ? 'route' : 'town';
 }
 
@@ -1088,7 +1313,11 @@ async function run(fn) {
 function tick() {
   frame++;
   const A = pressed.A || pressed.START, Bk = pressed.B;
-  if (ui.menu) menuInput(A, Bk);
+  if (ui.qty) {
+    const q = ui.qty, step = (pressed.up ? 1 : 0) - (pressed.down ? 1 : 0) + (pressed.right ? 10 : 0) - (pressed.left ? 10 : 0);
+    if (step) { q.n = ((q.n - 1 + step) % q.max + q.max) % q.max + 1; sfx('blip'); }
+    if (A || Bk) { ui.qty = null; sfx('select'); q.res(A ? q.n : 0); }
+  } else if (ui.menu) menuInput(A, Bk);
   else if (ui.waitBtn) { if (A || Bk) { const r = ui.waitBtn; ui.waitBtn = null; sfx('blip'); r(); } }
   else if (ui.dialog) dialogInput(A, Bk);
 
@@ -1152,10 +1381,13 @@ function worldInput() {
   if (P.turn > 0) { P.turn--; return; }
   tryMove(d);
 }
-const npcAt = (x, y) => G.map === 'lab' && x === 7 && y === 2;
+const npcAt = (x, y) => npcList(G.map).find(n => n.x === x && n.y === y);
 function tryMove(d) {
-  const [dx, dy] = DIRS[d], nx = G.x + dx, ny = G.y + dy, ch = tileAt(G.map, nx, ny);
+  const [dx, dy] = DIRS[d], nx = G.x + dx, ny = G.y + dy, ch = tileAt(G.map, nx, ny), m = MAPS[G.map];
   if (G.map === 'town' && !G.flags.starter && dy < 0 && ny <= 19) { run(gate); return; }
+  // Walking off the edge of a map into the next one.
+  const edge = ny < 0 ? 'north' : ny >= m.h ? 'south' : null;
+  if (edge && m[edge]) { const to = m[edge]; run(() => warp(to, nx, edge === 'north' ? MAPS[to].h - 1 : 0, d, true)); return; }
   if (SOLID.has(ch) || npcAt(nx, ny)) {
     if (frame - P.lastBump > 18) { sfx('bump'); P.lastBump = frame; }
     const key = `${G.x},${G.y},${d}`;
@@ -1166,25 +1398,71 @@ function tryMove(d) {
   G.x = nx; G.y = ny; P.dx = dx; P.dy = dy; P.off = 16; P.steps++;
 }
 function onStep() {
-  const ch = tileAt(G.map, G.x, G.y);
-  if (G.map === 'town' && ch === 'D') run(() => warp('lab', 4, 7, 'up'));
-  else if (G.map === 'lab' && ch === 'E') run(() => warp('town', 5, 31, 'down'));
-  else if (ch === 'G' && G.flags.starter && G.party.some(m => m.hp > 0) && Math.random() < 0.1) run(() => startBattle(rollWild()));
+  const ch = tileAt(G.map, G.x, G.y), w = (MAPS[G.map].warps || {})[`${G.x},${G.y}`];
+  if (w) { run(() => warp(...w)); return; }
+  if (poisonStep()) return;
+  // Trainers who can see you challenge you before anything else happens.
+  for (const n of npcList(G.map)) {
+    if (!n.trainer || G.flags.beat[n.id]) continue;
+    const [dx, dy] = DIRS[n.dir];
+    for (let k = 1; k <= n.range; k++) {
+      const x = n.x + dx * k, y = n.y + dy * k;
+      if (x === G.x && y === G.y) { run(() => trainerSpotted(n)); return; }
+      if (SOLID.has(tileAt(G.map, x, y)) || npcAt(x, y)) break;
+    }
+  }
+  if (G.map === 'viridian' && G.y === 2 && G.x >= 8 && G.x <= 11 && G.flags.starter && !G.flags.beat.rival2) { run(rival2); return; }
+  if (ch === 'G' && G.flags.starter && G.party.some(m => m.hp > 0) && Math.random() < 0.1) run(() => startBattle(rollWild()));
 }
-async function warp(map, x, y, dir) {
-  sfx('door'); await fadeOut();
+// Poisoned Pokémon lose 1 HP every 4 steps outside battle; at 1 HP the poison wears off.
+function poisonStep() {
+  if (P.steps % 4 || !G.party.some(m => m.status === 'PSN' && m.hp > 0)) return false;
+  const cured = [];
+  for (const m of G.party) if (m.status === 'PSN' && m.hp > 1) { m.hp--; m.dhp = m.hp; if (m.hp === 1) { m.status = null; cured.push(m.name); } }
+  ui.flash = true; setTimeout(() => { ui.flash = false; }, 60);
+  if (cured.length) { run(async () => { for (const n of cured) await say(`${n} survived the poisoning! The poison faded away.`); }); return true; }
+  return false;
+}
+async function warp(map, x, y, dir, quiet) {
+  if (!quiet) sfx('door');
+  await fadeOut();
   G.map = map; G.x = x; G.y = y; G.dir = dir; P.off = 0;
   await fadeIn();
 }
+async function trainerSpotted(n) {
+  sfx('stat');
+  ui.emote = n; await wait(40); ui.emote = null;
+  G.dir = OPPOSITE[n.dir];
+  await trainerBattle(n);
+}
+async function trainerBattle(n) {
+  const t = n.trainer;
+  await say(`${t.name.split(' ').pop()}: ${t.intro}`);
+  const result = await startBattle({ trainer: { ...t, team: t.team() } });
+  if (result === 'won') G.flags.beat[n.id] = true;
+}
 function interact() {
   const [dx, dy] = DIRS[G.dir], tx = G.x + dx, ty = G.y + dy, ch = tileAt(G.map, tx, ty);
+  // Talk across a shop counter to the person behind it.
+  const n = npcAt(tx, ty) || (ch === 'k' ? npcAt(tx + dx, ty + dy) : null);
+  if (n) {
+    if (n.item) run(async () => { G.flags['got_' + n.id] = true; addItem(n.item); sfx('get'); await say(`${G.name} found a ${n.item}!`); });
+    else if (n.trainer && !G.flags.beat[n.id]) run(() => { G.dir = G.dir; return trainerBattle(n); });
+    else if (n.trainer) run(() => say(`${n.trainer.name.split(' ').pop()}: ${n.trainer.after}`));
+    else run(n.talk);
+    return;
+  }
   if (G.map === 'lab') {
-    if (npcAt(tx, ty)) run(talkOak);
-    else if (ch === 'K') run(() => checkBall(tx - 3));
+    if (ch === 'K') run(() => checkBall(tx - 3));
     else if (ch === 'B') run(() => say("It's crammed full of POKéMON books!"));
     else if (ch === 'C') run(() => say("It's a PC. There's an e-mail:\n'Catch every POKéMON you can find!' - OAK"));
+  } else if (G.map === 'center' || G.map === 'mart') {
+    if (ch === 'C') run(() => say("It's a PC. Box storage isn't set up yet."));
+    else if (ch === 'B') run(() => say(G.map === 'mart' ? 'The shelves are stocked with POKé BALLs and medicine.' : 'Magazines about POKéMON care.'));
   } else {
-    if (SIGNS[`${tx},${ty}`]) run(() => say(SIGNS[`${tx},${ty}`]));
+    const sign = (SIGNS[G.map] || {})[`${tx},${ty}`];
+    if (sign) run(() => say(sign));
+    else if (ch === 'd' && G.map === 'viridian') run(() => say("The door is locked. Nobody's home."));
     else if (ch === 'd') run(() => houseDoor(tx));
     else if (ch === 'w') run(() => say('The water is crystal clear.'));
     else if (ch === 'n') run(() => say("You peek through the window. It's cozy inside."));
@@ -1228,7 +1506,7 @@ async function talkOak() {
   await say(`OAK: ${G.name}! How are your POKéMON doing? Let me take a look...`);
   sfx('heal'); healAll(); await wait(40);
   await say('There! Your POKéMON are fully healed!');
-  if (G.balls < 5) { G.balls = 5; sfx('get'); await say(`${G.name} got some POKé BALLs! (Now ${G.balls})`); }
+  if (itemCount('POKé BALL') < 5) { G.bag['POKé BALL'] = 5; sfx('get'); await say(`${G.name} got some POKé BALLs! (Now 5)`); }
   const n = G.flags.caught || 0;
   await say(n ? `You've caught ${n} POKéMON so far. Splendid! Keep it up!` : 'Weaken a wild POKéMON, then throw a POKé BALL to catch it!');
   await say('Train hard! Many POKéMON evolve when they reach a certain level.');
@@ -1236,7 +1514,7 @@ async function talkOak() {
 }
 async function checkBall(i) {
   if (G.flags.starter) {
-    await say(i === G.flags.starterIdx ? "It's an empty spot on the table." : "That's PROF. OAK's POKéMON. Better leave it be.");
+    await say(i === G.flags.starterIdx ? "It's an empty spot on the table." : i === G.flags.rivalIdx ? 'BLUE took this one.' : "That's PROF. OAK's POKéMON. Better leave it be.");
     return;
   }
   await offerStarter(i);
@@ -1247,15 +1525,49 @@ async function offerStarter(i) {
   const yes = await ask(`So! You want the ${SPECIES[name].desc} POKéMON, ${name}?`);
   ui.showcase = null;
   if (!yes) return;
-  G.party.push(makeMon(name, 5));
+  G.party.push(makeMon(name, 5)); own(name);
   G.flags.starter = true; G.flags.starterIdx = i; G.flags.metOak = true;
   sfx('get'); await say(`${G.name} received a ${name}!`);
-  await say(`OAK: ${name} looks happy to be with you!`);
-  await say('If a wild POKéMON appears, your POKéMON can battle it.');
-  await say('Weaken it first, then throw a POKé BALL to catch it!');
-  G.balls = 5; sfx('get'); await say(`${G.name} got 5 POKé BALLs!`);
-  await say('Now head north to ROUTE 1. Wild POKéMON hide in the tall grass!');
-  await say('Press START (ENTER) any time to check on your team.');
+  // BLUE takes the starter that is strong against yours.
+  const ri = [1, 2, 0, 0][i];
+  G.flags.rivalIdx = ri; G.flags.rivalMon = STARTERS[ri];
+  await say("BLUE: Then I'll take this one!");
+  sfx('get'); await say(`BLUE received a ${STARTERS[ri]}!`);
+  await say(`BLUE: Wait, ${G.name}! Let's check out our POKéMON! Come on, I'll take you on!`);
+  await startBattle({ trainer: { name: 'BLUE', spr: 'BLUE', team: [makeMon(STARTERS[ri], 5)], prize: 175, practice: true,
+    win: 'BLUE: WHAT? Unbelievable! I picked the wrong POKéMON!', lose: 'BLUE: Yeah! Am I great or what?' } });
+  await say("BLUE: Okay! I'll make my POKéMON fight to toughen it up!");
+  await say(`${G.name}! Gramps! Smell ya later!`);
+  sfx('door'); await fadeOut(); G.flags.rivalLeft = true; await wait(10); await fadeIn();
+  await say('OAK: Let me heal your POKéMON first.');
+  sfx('heal'); healAll(); await wait(40);
+  await say(`OAK: ${G.name}, I have a request. This is the POKéDEX! It records every POKéMON you see or catch.`);
+  G.flags.dex = true; sfx('get'); await say(`${G.name} got the POKéDEX!`);
+  await say('Weaken a wild POKéMON first, then throw a POKé BALL to catch it!');
+  addItem('POKé BALL', 5); sfx('get'); await say(`${G.name} got 5 POKé BALLs!`);
+  await say('Head north through ROUTE 1 to VIRIDIAN CITY. There is a POKéMON CENTER and a MART there.');
+  await say('Press START (ENTER) any time to check your team, items and POKéDEX.');
+  autoSave();
+}
+async function rival2() {
+  G.dir = 'up';
+  await say(`BLUE: Hey! ${G.name}! You're heading to VIRIDIAN FOREST? Let's see how good you've gotten!`);
+  const lvl = 8 + (G.party.some(m => m.lvl >= 12) ? 3 : 0);
+  const result = await startBattle({ trainer: { name: 'BLUE', spr: 'BLUE', prize: 35 * (lvl + 1),
+    team: [makeMon('PIDGEY', lvl + 1), makeMon(G.flags.rivalMon || 'SQUIRTLE', lvl)],
+    win: 'BLUE: Awww! You just got lucky!', lose: "BLUE: Heh! You're no match for me!" } });
+  if (result !== 'won') return;
+  G.flags.beat.rival2 = true;
+  await say("BLUE: The forest is crawling with bug POKéMON. I'm way ahead of you anyway! Smell ya later!");
+  sfx('door'); await fadeOut(); await wait(10); await fadeIn();
+}
+async function talkNurse() {
+  await say('Welcome to our POKéMON CENTER! We heal your POKéMON back to perfect health!');
+  if (!(await ask('Shall we heal your POKéMON?'))) { await say('We hope to see you again!'); return; }
+  await say("OK. We'll need your POKéMON.");
+  sfx('heal'); await fadeOut(); healAll(); await wait(50); await fadeIn();
+  G.lastHeal = { map: 'center', x: 4, y: 4, dir: 'up' };
+  await say("Thank you! Your POKéMON are fighting fit! We hope to see you again!");
   autoSave();
 }
 
@@ -1265,19 +1577,29 @@ async function offerStarter(i) {
 async function startMenu() {
   let i = 0;
   while (true) {
-    i = await choose(['POKéMON', 'BAG', 'SAVE', 'AUTOSAVE', 'EXIT'], { y: 0, idx: i });
-    if (i < 0 || i === 4) return;
-    if (i === 0) {
+    const opts = [...(G.flags.dex ? ['POKéDEX'] : []), 'POKéMON', 'ITEM', G.name, 'SAVE', 'AUTOSAVE', 'EXIT'];
+    i = await choose(opts, { y: 0, idx: Math.min(i, opts.length - 1), spacing: 13 });
+    const pick = opts[i];
+    if (i < 0 || pick === 'EXIT') return;
+    if (pick === 'POKéDEX') await pokedex();
+    else if (pick === 'POKéMON') {
       if (!G.party.length) await say("You don't have any POKéMON yet!");
       else await partyMenuWorld();
-    } else if (i === 1) {
-      await say(G.balls ? `POKé BALL x${G.balls}` : 'Your BAG is empty.');
-    } else if (i === 2) {
+    } else if (pick === 'ITEM') {
+      const items = bagList();
+      if (!items.length) { await say('Your BAG is empty.'); continue; }
+      ui.money = true;
+      const k = await choose(items.map(n => n.padEnd(12) + 'x' + itemCount(n)), { x: 8, y: 22, w: 152, spacing: 12 });
+      ui.money = false;
+      if (k >= 0) await useItemOn(items[k]);
+    } else if (pick === G.name) {
+      ui.overlay = 'card'; await waitButton(); ui.overlay = null;
+    } else if (pick === 'SAVE') {
       if (await ask(`${G.savedAt ? `Last saved ${ago(G.savedAt)}. ` : ''}SAVE the game now?`)) {
         if (saveGame()) { sfx('get'); await say(`${G.name} saved the game!`); }
         else await say("Couldn't save. Your browser blocked storage.");
       }
-    } else if (i === 3) {
+    } else if (pick === 'AUTOSAVE') {
       const on = autosaveOn();
       if (await ask(`AUTOSAVE is ${on ? 'ON' : 'OFF'}. Turn it ${on ? 'OFF' : 'ON'}?`)) {
         G.flags.autosave = !on;
@@ -1286,6 +1608,90 @@ async function startMenu() {
       }
     }
   }
+}
+async function pokedex() {
+  ui.overlay = 'dex';
+  while (true) {
+    const i = await choose(DEX_ORDER, { idx: ui.dexIdx, draw: m => { ui.dexIdx = m.idx; } });
+    if (i < 0) break;
+    ui.dexIdx = i;
+    if (!G.dex.seen[DEX_ORDER[i]]) { sfx('bump'); continue; }
+    ui.overlay = 'dexEntry'; await waitButton(); ui.overlay = 'dex';
+  }
+  ui.overlay = null;
+}
+function drawDex() {
+  rect(ctx, 0, 0, 160, 144, 0);
+  const seen = Object.keys(G.dex.seen).length, owned = Object.keys(G.dex.own).length;
+  drawText('POKéDEX', 8, 4); drawText(`SEEN ${seen}  OWN ${owned}`, 8, 14, 2);
+  rect(ctx, 0, 23, 160, 1, 3);
+  const n = DEX_ORDER.length, top = Math.max(0, Math.min(ui.dexIdx - 3, n - 8));
+  for (let r = 0; r < 8 && top + r < n; r++) {
+    const i = top + r, name = DEX_ORDER[i], y = 30 + r * 14;
+    if (i === ui.dexIdx) drawText('▶', 0, y);
+    drawText(String(DEX[name][0]).padStart(3, '0'), 8, y);
+    if (G.dex.own[name]) drawSprite(BALL, 36, y - 1);
+    drawText(G.dex.seen[name] ? name : '----------', 48, y);
+  }
+}
+function drawDexEntry() {
+  const name = DEX_ORDER[ui.dexIdx], [num, kind, ht, wt, text] = DEX[name], owned = G.dex.own[name];
+  box(0, 0, 160, 144);
+  drawSprite(MON_BIG[name], 8, 8);
+  drawText('No.' + String(num).padStart(3, '0'), 64, 10);
+  drawText(name, 64, 20);
+  drawText(kind, 64, 30);
+  drawText(owned ? `HT ${ht.toFixed(1)}M` : 'HT ???', 64, 42);
+  drawText(owned ? `WT ${wt.toFixed(1)}KG` : 'WT ???', 64, 52);
+  rect(ctx, 8, 64, 144, 1, 3);
+  wrap(owned ? text : 'Catch it to add its full entry to the POKéDEX.', 18).forEach((ln, i) => drawText(ln, 8, 72 + i * 11));
+}
+function drawCard() {
+  box(0, 0, 160, 144);
+  drawText('TRAINER CARD', 8, 10);
+  rect(ctx, 8, 20, 144, 1, 3);
+  drawText('NAME/', 8, 32); drawText(G.name, 64, 32);
+  drawText('MONEY/', 8, 48); drawText('¥' + G.money, 64, 48);
+  drawText('POKéDEX/', 8, 64); drawText(G.flags.dex ? `${Object.keys(G.dex.own).length} OWN` : '---', 80, 64);
+  drawText('TEAM/', 8, 80); G.party.forEach((m, i) => drawSprite(MON_IMG[m.name], 56 + i * 16, 76));
+  drawText('BADGES/', 8, 104); drawText('NONE YET', 72, 104, 2);
+}
+// Pick a number with up/down (and left/right for steps of 10). Resolves 0 on cancel.
+const chooseQty = (max, price) => new Promise(res => { ui.qty = { n: 1, max, price, res }; });
+async function talkClerk() {
+  await say('Hi there! May I help you?', { keep: true });
+  while (true) {
+    ui.money = true;
+    const c = await choose(['BUY', 'SELL', 'QUIT'], { x: 0, y: 22, w: 64, h: 56 });
+    if (c < 0 || c === 2) break;
+    ui.dialog = null;
+    if (c === 0) {
+      const i = await choose(MART.map(n => n.padEnd(12) + ('¥' + ITEMS[n].price).padStart(5)), { x: 0, y: 22, w: 160, h: 86, spacing: 9 });
+      if (i < 0) { say('Is there anything else?', { keep: true }); continue; }
+      const name = MART[i], price = ITEMS[name].price, max = Math.min(99, Math.floor(G.money / price));
+      if (!max) { await say("You don't have enough money."); say('Is there anything else?', { keep: true }); continue; }
+      say(`${name}? How many would you like?`, { keep: true });
+      const q = await chooseQty(max, price);
+      if (q > 0 && (await ask(`${name} x${q}. That will be ¥${q * price}. OK?`))) {
+        G.money -= q * price; addItem(name, q); sfx('get');
+        await say('Here you are! Thank you!');
+      }
+    } else {
+      const items = bagList();
+      if (!items.length) { await say('You have nothing to sell.'); say('Is there anything else?', { keep: true }); continue; }
+      const i = await choose(items.map(n => n.padEnd(12) + 'x' + itemCount(n)), { x: 8, y: 22, w: 152, spacing: 12 });
+      if (i < 0) { say('Is there anything else?', { keep: true }); continue; }
+      const name = items[i], price = ITEMS[name].price / 2;
+      say(`How many ${name}s will you sell?`, { keep: true });
+      const q = await chooseQty(itemCount(name), price);
+      if (q > 0 && (await ask(`I can pay ¥${q * price} for that. OK?`))) {
+        G.money += q * price; takeItem(name, q); sfx('get');
+      }
+    }
+    say('Is there anything else?', { keep: true });
+  }
+  ui.money = false; ui.dialog = null;
+  await say('Thank you! Please come again!');
 }
 const partyCursor = m => { ui.partyIdx = m.idx; };
 async function partyMenuWorld() {
@@ -1327,7 +1733,7 @@ function drawParty() {
     const y = i * 16;
     drawSprite(MON_IMG[m.name], 12, y);
     drawText(m.name, 32, y);
-    drawText(':L' + m.lvl, 116, y);
+    drawText(levelOrStatus(m), 116, y);
     hpBar(32, y + 8, m, false);
     drawText(m.hp > 0 ? `${pad3(m.hp)}/${pad3(m.maxhp)}` : 'FAINTED', 88, y + 8);
     if (i === ui.partyIdx) drawText('▶', 2, y + 4);
@@ -1338,7 +1744,7 @@ function drawSummary() {
   box(0, 0, 160, 144);
   drawSprite(MON_BIG[m.name], 8, 6);
   drawText(m.name, 64, 8);
-  drawText(':L' + m.lvl, 64, 18);
+  drawText(':L' + m.lvl + (m.status ? ' ' + m.status : ''), 64, 18);
   drawText('TYPE/', 64, 30);
   s.types.forEach((t, i) => drawText(t, 72, 40 + i * 9));
   hpBar(8, 60, m);
@@ -1348,7 +1754,7 @@ function drawSummary() {
   drawText('SPD', 8, 82); drawText(pad3(m.spd), 40, 82);
   drawText('EXP', 80, 82); drawText(String(m.exp), 112, 82);
   drawText('TO NEXT LV', 8, 92); drawText(String((m.lvl + 1) ** 3 - m.exp), 96, 92);
-  m.moves.forEach((mv, i) => drawText(mv, 16, 104 + i * 9));
+  m.moves.forEach((mv, i) => { drawText(mv, 8, 104 + i * 9); drawText(`${String(m.pp[i]).padStart(2)}/${MOVES[mv].pp}`, 112, 104 + i * 9); });
 }
 
 // ---------------------------------------------------------------------------
@@ -1357,45 +1763,67 @@ function drawSummary() {
 const stages = () => ({ atk: 0, def: 0, spd: 0, acc: 0 });
 const stageMul = s => s >= 0 ? (2 + s) / 2 : 2 / (2 - s);
 const effStat = (p, k) => p.mon[k] * stageMul(p.st[k]);
-const nameOf = p => p === B.ally ? p.mon.name : 'Wild ' + p.mon.name;
+const nameOf = p => p === B.ally ? p.mon.name : (B.trainer ? 'Enemy ' : 'Wild ') + p.mon.name;
+const levelOrStatus = m => m.status || ':L' + m.lvl;
 function rollWild() {
   // Wild Pokémon get a little tougher as your strongest team member levels up.
   const bonus = Math.max(0, Math.floor((Math.max(5, ...G.party.map(m => m.lvl)) - 5) / 3));
-  let r = Math.random() * WILD.reduce((s, w) => s + w[1], 0);
-  for (const [name, wgt, lo, hi] of WILD) { if ((r -= wgt) < 0) return makeMon(name, rand(lo, hi) + bonus); }
+  const table = WILD[G.map] || WILD.town;
+  let r = Math.random() * table.reduce((s, w) => s + w[1], 0);
+  for (const [name, wgt, lo, hi] of table) { if ((r -= wgt) < 0) return makeMon(name, rand(lo, hi) + bonus); }
   return makeMon('PIDGEY', 3);
 }
-async function startBattle(wild) {
+// foe is a wild Pokémon, or { trainer: { name, spr, team, prize, win, lose, practice } }.
+async function startBattle(foe) {
+  const t = foe.trainer || null, first = t ? t.team[0] : foe;
   ui.battleIntro = true;
   if (soundMode === 1) sfx('encounter');
-  await tween(24, t => { ui.flash = Math.floor(t * 24 / 4) % 2 === 0; });
+  await tween(24, tt => { ui.flash = Math.floor(tt * 24 / 4) % 2 === 0; });
   ui.flash = false;
-  await tween(24, t => { ui.wipe = t; });
-  B = { enemy: { mon: wild, st: stages() }, ally: null, eX: -112, eOffY: 0, eVis: true, eHide: false, eInfo: false,
+  await tween(24, tt => { ui.wipe = tt; });
+  B = { trainer: t, team: t ? t.team : [first], enemy: { mon: first, st: stages(), conf: 0 }, ally: null, eX: -112, eOffY: 0, eVis: !t, eHide: false, eInfo: false,
     aX: 0, aOffY: 0, aVis: false, aHide: false, aInfo: false, aPop: 0, ball: null, runTries: 0, lastAct: 0, lastMove: 0, leveled: new Set(),
-    tX: 160, showBalls: false };
+    tX: 160, showBalls: false, etX: t ? -112 : null };
   G.scene = 'battle'; ui.wipe = 0; ui.battleIntro = false;
-  await tween(40, t => { B.eX = Math.round(-112 * (1 - t)); B.tX = Math.round(8 + 152 * (1 - t)); });
-  B.eInfo = true; B.showBalls = true;
-  await say(`Wild ${wild.name} appeared!`);
+  await tween(40, tt => { const o = Math.round(-112 * (1 - tt)); if (t) B.etX = o; else B.eX = o; B.tX = Math.round(8 + 152 * (1 - tt)); });
+  B.showBalls = true;
+  if (t) {
+    await say(`${t.name} wants to fight!`);
+    await tween(16, tt => { B.etX = Math.round(80 * tt); });
+    B.etX = null;
+    await enemySendOut(first);
+  } else {
+    B.eInfo = true; see(first.name);
+    await say(`Wild ${first.name} appeared!`);
+  }
   B.showBalls = false;
-  await tween(16, t => { B.tX = Math.round(8 - 80 * t); });
+  await tween(16, tt => { B.tX = Math.round(8 - 80 * tt); });
   B.tX = null;
   await sendOut(G.party.find(m => m.hp > 0));
-  const result = await battleLoop();
+  let result = await battleLoop();
   ui.dialog = null;
+  if (result === 'lost' && t && t.practice) {
+    // The first rival battle doesn't count against you.
+    await say(t.lose); healAll(); result = 'practice';
+  }
   await fadeOut();
   const evolving = result === 'won' ? [...B.leveled].filter(m => m.hp > 0 && EVO[m.name] && m.lvl >= EVO[m.name][1]) : [];
   B = null;
   for (const m of evolving) await evolve(m);
   G.scene = 'world';
   if (result === 'lost') {
-    G.map = 'town'; G.x = 5; G.y = 24; G.dir = 'down'; P.off = 0; healAll();
+    const lostMoney = Math.floor(G.money / 2);
+    G.money -= lostMoney;
+    healAll(); P.off = 0;
+    if (G.lastHeal) Object.assign(G, G.lastHeal); else { G.map = 'town'; G.x = 5; G.y = 24; G.dir = 'down'; }
     await wait(20); await fadeIn();
-    await say(`MOM: Oh, ${G.name}! You look exhausted... Rest up, dear.`);
+    if (lostMoney) await say(`${G.name} dropped ¥${lostMoney} in the panic...`);
+    if (G.lastHeal) await say('NURSE: Your POKéMON have been healed. Please be careful out there!');
+    else { await say(`MOM: Oh, ${G.name}! You look exhausted... Rest up, dear.`); }
     sfx('heal'); await say('Your POKéMON were fully healed!');
   } else await fadeIn();
   autoSave();
+  return result;
 }
 async function evolve(m) {
   const from = m.name, to = EVO[from][0];
@@ -1422,7 +1850,7 @@ async function evolve(m) {
     m.name = to; calcStats(m); m.hp = Math.max(1, m.hp + m.maxhp - oldMax); m.dhp = m.hp;
     sfx('caught');
     await say(`Congratulations! Your ${from} evolved into ${to}!`);
-    G.flags.evolved = (G.flags.evolved || 0) + 1;
+    G.flags.evolved = (G.flags.evolved || 0) + 1; own(to);
     if (LEARN[to]) await learnMove(m, LEARN[to]);
   }
   await fadeOut();
@@ -1430,16 +1858,23 @@ async function evolve(m) {
 }
 async function learnMove(m, mv) {
   if (m.moves.includes(mv)) return;
-  if (m.moves.length < 4) { m.moves.push(mv); sfx('levelup'); await say(`${m.name} learned ${mv}!`); return; }
+  if (m.moves.length < 4) { m.moves.push(mv); m.pp.push(MOVES[mv].pp); sfx('levelup'); await say(`${m.name} learned ${mv}!`); return; }
   // Team full of moves: replace a status move first, otherwise the weakest attack.
   let i = m.moves.findIndex(x => !MOVES[x].pow);
   if (i < 0) i = m.moves.reduce((best, x, j) => MOVES[x].pow < MOVES[m.moves[best]].pow ? j : best, 0);
   const old = m.moves[i];
-  m.moves[i] = mv; sfx('levelup');
+  m.moves[i] = mv; m.pp[i] = MOVES[mv].pp; sfx('levelup');
   await say(`${m.name} forgot ${old} and learned ${mv}!`);
 }
+async function enemySendOut(mon) {
+  B.enemy = { mon, st: stages(), conf: 0 }; mon.dhp = mon.hp; see(mon.name);
+  B.eOffY = 0; B.eX = 0; B.eVis = false; B.eInfo = true;
+  await say(`${B.trainer.name} sent out ${mon.name}!`, { keep: true });
+  sfx('throw'); await wait(10); B.eVis = true; await wait(20);
+  ui.dialog = null;
+}
 async function sendOut(mon) {
-  B.ally = { mon, st: stages() }; mon.dhp = mon.hp;
+  B.ally = { mon, st: stages(), conf: 0 }; mon.dhp = mon.hp;
   B.aVis = true; B.aHide = false; B.aOffY = 0; B.aX = 0; B.aPop = 0; B.aInfo = false;
   await say(`Go! ${mon.name}!`, { keep: true });
   sfx('throw');
@@ -1455,15 +1890,19 @@ async function withdraw() {
 async function battleLoop() {
   while (true) {
     const a = B.ally, e = B.enemy;
-    const act = await choose(['FIGHT', 'PKMN', 'BALL', 'RUN'], { x: 56, y: 96, w: 104, h: 48, cols: 2, colW: 52, cancel: false, idx: B.lastAct, battle: true });
+    const act = await choose(['FIGHT', 'PKMN', 'ITEM', 'RUN'], { x: 56, y: 96, w: 104, h: 48, cols: 2, colW: 52, cancel: false, idx: B.lastAct, battle: true });
     B.lastAct = act;
     let move = null;
     if (act === 0) {
-      const moves = a.mon.moves;
-      const mi = await choose(moves, { x: 32, y: 96, w: 128, h: 48, spacing: 9, idx: Math.min(B.lastMove, moves.length - 1),
-        extra: m => { box(0, 64, 88, 32); drawText('TYPE/', 8, 72); drawText(MOVES[moves[m.idx]].type, 16, 82); } });
-      if (mi < 0) continue;
-      B.lastMove = mi; move = moves[mi];
+      const mon = a.mon, moves = mon.moves;
+      if (mon.pp.every(x => x <= 0)) { await say(`${mon.name} has no moves left!`); move = 'STRUGGLE'; }
+      else {
+        const mi = await choose(moves, { x: 32, y: 96, w: 128, h: 48, spacing: 9, idx: Math.min(B.lastMove, moves.length - 1),
+          extra: m => { box(0, 60, 88, 36); drawText('TYPE/', 8, 64); drawText(MOVES[moves[m.idx]].type, 16, 73); drawText(`PP ${String(mon.pp[m.idx]).padStart(2)}/${MOVES[moves[m.idx]].pp}`, 8, 83); } });
+        if (mi < 0) continue;
+        if (mon.pp[mi] <= 0) { await say('No PP left for this move!'); continue; }
+        B.lastMove = mi; move = moves[mi];
+      }
     } else if (act === 1) {
       const idx = await partyPick(false);
       if (idx < 0) continue;
@@ -1472,9 +1911,11 @@ async function battleLoop() {
       if (m.hp <= 0) { await say("There's no will to fight!"); continue; }
       await withdraw(); await sendOut(m);
     } else if (act === 2) {
-      if (G.balls <= 0) { await say("You don't have any POKé BALLs!"); continue; }
-      if (await throwBall()) return 'caught';
+      const r = await battleItem();
+      if (r === 'caught') return 'caught';
+      if (r === 'cancel') continue;
     } else {
+      if (B.trainer) { await say("No! There's no running from a trainer battle!"); continue; }
       if (await tryRun()) return 'ran';
     }
 
@@ -1482,19 +1923,38 @@ async function battleLoop() {
     let order;
     if (move) {
       const pp = MOVES[move].prio || 0, ep = MOVES[eMove].prio || 0;
-      const as = effStat(B.ally, 'spd'), es = effStat(e, 'spd');
+      const as = speedOf(B.ally), es = speedOf(e);
       const allyFirst = pp !== ep ? pp > ep : as !== es ? as > es : Math.random() < 0.5;
       order = allyFirst ? [[B.ally, e, move], [e, B.ally, eMove]] : [[e, B.ally, eMove], [B.ally, e, move]];
     } else order = [[e, B.ally, eMove]];
 
     for (const [u, t, mv] of order) {
-      if (u.mon.hp <= 0 || t.mon.hp <= 0) continue;
+      if (u.mon.hp <= 0 || t.mon.hp <= 0 || (u !== B.ally && u !== B.enemy)) continue;
       await useMove(u, t, mv);
-      if (e.mon.hp <= 0) { await enemyFainted(); return 'won'; }
-      if (B.ally.mon.hp <= 0) { if ((await allyFainted()) === 'blackout') return 'lost'; break; }
+      const r = await resolveFaints(); if (r) return r;
+    }
+    // Poison and burns hurt at the end of each turn.
+    for (const side of [B.ally, B.enemy]) {
+      const m = side.mon;
+      if (m.hp <= 0 || (m.status !== 'PSN' && m.status !== 'BRN')) continue;
+      m.hp = Math.max(0, m.hp - Math.max(1, Math.floor(m.maxhp / 8)));
+      await say(`${nameOf(side)} is hurt by ${m.status === 'PSN' ? 'poison' : 'its burn'}!`, { keep: true });
+      await drainHP(m); ui.dialog = null;
+      const r = await resolveFaints(); if (r) return r;
     }
   }
 }
+const speedOf = side => effStat(side, 'spd') * (side.mon.status === 'PAR' ? 0.25 : 1);
+async function resolveFaints() {
+  if (B.enemy.mon.hp <= 0 && (await enemyFainted())) return 'won';
+  if (B.ally.mon.hp <= 0 && (await allyFainted()) === 'blackout') return 'lost';
+  return null;
+}
+function inflict(side, st) {
+  side.mon.status = st;
+  if (st === 'SLP') side.mon.sleep = rand(1, 3);
+}
+const canInflict = (side, st) => !side.mon.status && !SPECIES[side.mon.name].types.includes(STATUS_IMMUNE[st]);
 async function lunge(isAlly) {
   await tween(6, t => { const o = Math.round(Math.sin(t * Math.PI) * 8); if (isAlly) B.aX = o; else B.eX = -o; });
 }
@@ -1511,7 +1971,28 @@ async function drainHP(m) {
   while (m.dhp !== m.hp) { m.dhp = m.dhp > m.hp ? Math.max(m.hp, m.dhp - step) : Math.min(m.hp, m.dhp + step); await wait(2); }
 }
 async function useMove(u, t, mv) {
-  const M = MOVES[mv], isAlly = u === B.ally;
+  const M = MOVES[mv], isAlly = u === B.ally, me = u.mon;
+  // Conditions that can stop a Pokémon from moving at all.
+  if (me.status === 'SLP') {
+    if (--me.sleep <= 0) { me.status = null; await say(`${nameOf(u)} woke up!`); }
+    else await say(`${nameOf(u)} is fast asleep!`);
+    return;
+  }
+  if (me.status === 'PAR' && Math.random() < 0.25) { await say(`${nameOf(u)} is fully paralyzed!`); return; }
+  if (u.conf > 0) {
+    if (--u.conf === 0) await say(`${nameOf(u)} snapped out of its confusion!`);
+    else {
+      await say(`${nameOf(u)} is confused!`);
+      if (Math.random() < 0.5) {
+        const dmg = Math.max(1, Math.floor(Math.floor((2 * me.lvl / 5 + 2) * 40 * effStat(u, 'atk') / effStat(u, 'def')) / 50) + 2);
+        sfx('hit'); await blink(isAlly);
+        me.hp = Math.max(0, me.hp - dmg); await drainHP(me);
+        await say('It hurt itself in its confusion!');
+        return;
+      }
+    }
+  }
+  if (isAlly && mv !== 'STRUGGLE') me.pp[me.moves.indexOf(mv)]--;
   await say(`${nameOf(u)} used ${mv}!`, { keep: true });
   await wait(8);
   if (M.self) {
@@ -1523,21 +2004,38 @@ async function useMove(u, t, mv) {
   }
   const accMul = u.st.acc >= 0 ? (3 + u.st.acc) / 3 : 3 / (3 - u.st.acc);
   if (Math.random() * 100 >= M.acc * accMul) { ui.dialog = null; await say(`${nameOf(u)}'s attack missed!`); return; }
+  if (M.inflict) {
+    ui.dialog = null;
+    if (!canInflict(t, M.inflict)) { await say('But it failed!'); return; }
+    sfx('stat'); await shake(!isAlly);
+    inflict(t, M.inflict);
+    await say(`${nameOf(t)} ${STATUS_TEXT[M.inflict]}`);
+    return;
+  }
   await lunge(isAlly);
   if (M.pow) {
     const crit = Math.random() < 1 / 16, eff = typeMul(M.type, SPECIES[t.mon.name].types);
-    const L = u.mon.lvl * (crit ? 2 : 1);
-    let dmg = Math.floor(Math.floor((2 * L / 5 + 2) * M.pow * effStat(u, 'atk') / effStat(t, 'def')) / 50) + 2;
-    if (SPECIES[u.mon.name].types.includes(M.type)) dmg = Math.floor(dmg * 1.5);
+    const L = me.lvl * (crit ? 2 : 1), atk = effStat(u, 'atk') * (me.status === 'BRN' ? 0.5 : 1);
+    let dmg = Math.floor(Math.floor((2 * L / 5 + 2) * M.pow * atk / effStat(t, 'def')) / 50) + 2;
+    if (SPECIES[me.name].types.includes(M.type)) dmg = Math.floor(dmg * 1.5);
     dmg = Math.max(1, Math.floor(dmg * eff * rand(217, 255) / 255));
     sfx(eff > 1 ? 'super' : 'hit');
     await blink(!isAlly);
+    const dealt = Math.min(t.mon.hp, dmg);
     t.mon.hp = Math.max(0, t.mon.hp - dmg);
     await drainHP(t.mon);
     ui.dialog = null;
     if (crit) await say('A critical hit!');
     if (eff > 1) await say("It's super effective!");
     else if (eff < 1) await say("It's not very effective...");
+    if (M.recoil && me.hp > 0) {
+      me.hp = Math.max(0, me.hp - Math.max(1, Math.floor(dealt / 4))); await drainHP(me);
+      await say(`${nameOf(u)} is hit with recoil!`);
+    }
+    if (M.eff && t.mon.hp > 0 && Math.random() * 100 < M.chance) {
+      if (M.eff === 'CONF') { if (!t.conf) { t.conf = rand(2, 5); await say(`${nameOf(t)} became confused!`); } }
+      else if (canInflict(t, M.eff)) { inflict(t, M.eff); await say(`${nameOf(t)} ${STATUS_TEXT[M.eff]}`); }
+    }
   } else {
     const st = M.stat;
     sfx('stat'); await shake(!isAlly);
@@ -1547,14 +2045,15 @@ async function useMove(u, t, mv) {
   }
   ui.dialog = null;
 }
+// Returns true when the battle is over (the last enemy Pokémon fainted).
 async function enemyFainted() {
-  const e = B.enemy.mon, a = B.ally.mon;
+  const e = B.enemy.mon, a = B.ally.mon, t = B.trainer;
   sfx('faint');
-  await tween(16, t => { B.eOffY = Math.round(48 * t); });
-  B.eVis = false; B.eInfo = false; B.victory = true;
-  await say(`Wild ${e.name} fainted!`);
-  // Double the classic EXP formula so levels (and evolutions) come at a friendlier pace.
-  const gain = Math.max(1, Math.floor(SPECIES[e.name].exp * e.lvl / 7) * 2);
+  await tween(16, tt => { B.eOffY = Math.round(48 * tt); });
+  B.eVis = false; B.eInfo = false;
+  await say(`${nameOf(B.enemy)} fainted!`);
+  // Double the classic EXP formula so levels (and evolutions) come at a friendlier pace; trainers give 1.5x on top.
+  const gain = Math.max(1, Math.floor(SPECIES[e.name].exp * e.lvl / 7 * (t ? 1.5 : 1)) * 2);
   await say(`${a.name} gained ${gain} EXP. Points!`);
   a.exp += gain;
   while (a.lvl < 100 && a.exp >= (a.lvl + 1) ** 3) {
@@ -1562,7 +2061,24 @@ async function enemyFainted() {
     a.lvl++; calcStats(a); a.hp += a.maxhp - oldMax; a.dhp = a.hp;
     B.leveled.add(a);
     sfx('levelup'); await say(`${a.name} grew to level ${a.lvl}!`);
+    const mv = (LEVEL_LEARN[a.name] || {})[a.lvl];
+    if (mv) await learnMove(a, mv);
   }
+  const next = B.team.find(m => m.hp > 0);
+  if (t && next) { await enemySendOut(next); return false; }
+  B.victory = true;
+  if (t) {
+    await tween(20, tt => { B.etX = Math.round(-80 * (1 - tt)); });
+    await say(`${G.name} defeated ${t.name}!`);
+    if (t.win) await say(t.win);
+    G.money += t.prize; sfx('get');
+    await say(`${G.name} got ¥${t.prize} for winning!`);
+  } else {
+    const found = e.lvl * 6;
+    G.money += found;
+    await say(`${G.name} picked up ¥${found}.`);
+  }
+  return true;
 }
 async function allyFainted() {
   const a = B.ally.mon;
@@ -1572,7 +2088,7 @@ async function allyFainted() {
   await say(`${a.name} fainted!`);
   if (!G.party.some(m => m.hp > 0)) {
     await say(`${G.name} is out of usable POKéMON!`);
-    await say(`${G.name} blacked out!`);
+    if (!(B.trainer && B.trainer.practice)) await say(`${G.name} blacked out!`);
     return 'blackout';
   }
   let idx;
@@ -1590,17 +2106,55 @@ async function tryRun() {
   await say("Can't escape!");
   return false;
 }
-async function throwBall() {
+async function battleItem() {
+  const items = bagList();
+  if (!items.length) { await say('Your BAG is empty.'); return 'cancel'; }
+  const i = await choose(items.map(n => n.padEnd(12) + 'x' + itemCount(n)), { x: 8, y: 0, w: 152, spacing: 12 });
+  if (i < 0) return 'cancel';
+  const name = items[i], it = ITEMS[name];
+  if (it.ball) {
+    if (B.trainer) { await say("The trainer blocked the BALL! Don't be a thief!"); return 'cancel'; }
+    return (await throwBall(name)) ? 'caught' : 'used';
+  }
+  const used = await useItemOn(name);
+  return used ? 'used' : 'cancel';
+}
+// Potions and status cures, used from the battle ITEM menu or the START menu.
+async function useItemOn(name) {
+  const it = ITEMS[name];
+  if (it.ball) { await say("You can't use that here!"); return false; }
+  ui.overlay = 'party'; ui.partyIdx = 0;
+  say('Use on which POKéMON?', { keep: true });
+  const idx = await choose(G.party.map(m => m.name), { draw: partyCursor });
+  ui.overlay = null; ui.dialog = null;
+  if (idx < 0) return false;
+  const m = G.party[idx];
+  const works = m.hp > 0 && (it.heal ? m.hp < m.maxhp : m.status === it.cure);
+  if (!works) { await say("It won't have any effect."); return false; }
+  takeItem(name); sfx('heal');
+  if (it.heal) {
+    const before = m.hp;
+    m.hp = Math.min(m.maxhp, m.hp + it.heal);
+    if (B && B.ally && B.ally.mon === m) await drainHP(m); else m.dhp = m.hp;
+    await say(`${m.name} recovered ${m.hp - before} HP!`);
+  } else {
+    m.status = null;
+    await say(`${m.name} ${{ PSN: 'was cured of poison!', PAR: 'was cured of paralysis!', SLP: 'woke up!', BRN: 'was cured of its burn!' }[it.cure]}`);
+  }
+  return true;
+}
+async function throwBall(ballName = 'POKé BALL') {
   const m = B.enemy.mon;
-  G.balls--;
-  await say(`${G.name} used POKé BALL!`, { keep: true });
+  takeItem(ballName);
+  await say(`${G.name} used ${ballName}!`, { keep: true });
   sfx('throw');
   B.ball = { x: 24, y: 88, wob: 0 };
   await tween(24, t => { B.ball.x = Math.round(24 + 92 * t); B.ball.y = Math.round(80 - 60 * t - 36 * Math.sin(Math.PI * t)); });
   for (let i = 0; i < 3; i++) { B.eHide = true; await wait(3); B.eHide = false; await wait(3); }
   B.eVis = false;
   await tween(10, t => { B.ball.y = Math.round(20 + 18 * t); });
-  const a = Math.max(1, Math.floor((3 * m.maxhp - 2 * m.hp) * SPECIES[m.name].rate / (3 * m.maxhp)));
+  const bonus = ITEMS[ballName].ball * (m.status === 'SLP' ? 2 : m.status ? 1.5 : 1);
+  const a = Math.max(1, Math.floor((3 * m.maxhp - 2 * m.hp) * SPECIES[m.name].rate * bonus / (3 * m.maxhp)));
   const p = Math.min(1, a / 255), caught = Math.random() < p;
   const shakes = caught ? 3 : Math.min(2, Math.floor(Math.random() * 3 * Math.min(1, p * 2.5)));
   for (let i = 0; i < shakes; i++) {
@@ -1614,7 +2168,10 @@ async function throwBall() {
     B.victory = true;
     if (soundMode === 1) sfx('caught');
     G.flags.caught = (G.flags.caught || 0) + 1;
+    const isNew = !G.dex.own[m.name];
+    own(m.name);
     await say(`All right! ${m.name} was caught!`);
+    if (isNew && G.flags.dex) await say(`New POKéDEX data will be added for ${m.name}!`);
     if (G.party.length < 6) { G.party.push(m); await say(`${m.name} joined your team!`); }
     else { G.box.push(m); await say(`Your team is full. ${m.name} was sent to the PC.`); }
     return true;
@@ -1634,9 +2191,13 @@ function drawWorld() {
   const tx0 = Math.floor(cx / 16), ty0 = Math.floor(cy / 16);
   for (let ty = ty0; ty <= ty0 + 9; ty++) for (let tx = tx0; tx <= tx0 + 10; tx++) ctx.drawImage(tileImg(tileAt(G.map, tx, ty)), tx * 16 - cx, ty * 16 - cy);
   if (G.map === 'lab') {
-    for (let i = 0; i < 4; i++) if (!(G.flags.starter && G.flags.starterIdx === i)) drawSprite(BALL, (3 + i) * 16 + 4 - cx, 3 * 16 + 4 - cy);
-    drawSprite(OAK, 7 * 16 - cx, 2 * 16 - 4 - cy);
+    for (let i = 0; i < 4; i++) if (!(G.flags.starter && (G.flags.starterIdx === i || G.flags.rivalIdx === i))) drawSprite(BALL, (3 + i) * 16 + 4 - cx, 3 * 16 + 4 - cy);
   }
+  for (const n of npcList(G.map)) {
+    if (n.item) drawSprite(BALL, n.x * 16 + 4 - cx, n.y * 16 + 4 - cy);
+    else drawSprite(NPC_SPR[n.spr], n.x * 16 - cx, n.y * 16 - 4 - cy);
+  }
+  if (ui.emote) { const ex = ui.emote.x * 16 - cx, ey = ui.emote.y * 16 - 20 - cy; box(ex, ey, 16, 15); drawText('!', ex + 5, ey + 4); }
   const fr = P.off > 8 ? (P.steps % 2 ? 2 : 1) : 0;
   drawSprite(PL[G.dir][fr], p.x - cx, p.y - 4 - cy);
   if (tileAt(G.map, G.x, G.y) === 'G' && P.off < 10) ctx.drawImage(T.G, 0, 8, 16, 8, G.x * 16 - cx, G.y * 16 + 8 - cy, 16, 8);
@@ -1644,6 +2205,7 @@ function drawWorld() {
 function drawBattle() {
   const e = B.enemy.mon, a = B.ally && B.ally.mon;
   // Enemy: full-detail front sprite in the top right.
+  if (B.etX != null && B.trainer) drawSprite(TRAINER_BIG[B.trainer.spr], 102 + B.etX, 6);
   if (B.eVis && !B.eHide) {
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 160, 56); ctx.clip();
     drawSprite(MON_BIG[e.name], 102 + B.eX, 6 + B.eOffY);
@@ -1651,7 +2213,7 @@ function drawBattle() {
   }
   if (B.eInfo) {
     drawText(e.name, 8, 2);
-    drawText(':L' + e.lvl, 32, 10);
+    drawText(levelOrStatus(e), 32, 10);
     hpBar(12, 18, e);
     rect(ctx, 8, 12, 1, 15, 3); rect(ctx, 8, 26, 80, 1, 3); rect(ctx, 87, 25, 2, 2, 3);
   }
@@ -1672,14 +2234,14 @@ function drawBattle() {
   }
   if (a && B.aInfo) {
     drawText(a.name, 80, 56);
-    drawText(':L' + a.lvl, 112, 64);
+    drawText(levelOrStatus(a), 112, 64);
     hpBar(76, 72, a);
     drawText(`${pad3(a.dhp)}/${pad3(a.maxhp)}`, 88, 80);
     rect(ctx, 152, 64, 1, 25, 3); rect(ctx, 84, 89, 69, 1, 3); rect(ctx, 83, 88, 2, 2, 3);
   }
   if (B.ball) drawSprite(BALL, B.ball.x + B.ball.wob, B.ball.y, 2);
   box(0, 96, 160, 48);
-  if (!ui.dialog && ui.menu && ui.menu.battle) { drawText('BALLS', 8, 104); drawText('x' + G.balls, 16, 120); }
+  if (!ui.dialog && ui.menu && ui.menu.battle) { drawText('BALLS', 8, 104); drawText('x' + itemCount('POKé BALL'), 16, 120); }
 }
 function drawTitle() {
   drawText('POKéMON', 25, 11, 1, 2);
@@ -1721,9 +2283,18 @@ function render() {
   else if (G.scene === 'evolve' && ui.evo) drawSprite(MON_BIG[ui.evo.name], 56, 24);
   if (ui.overlay === 'party') drawParty();
   else if (ui.overlay === 'summary') drawSummary();
+  else if (ui.overlay === 'dex') drawDex();
+  else if (ui.overlay === 'dexEntry') drawDexEntry();
+  else if (ui.overlay === 'card') drawCard();
   if (ui.showcase) { box(48, 4, 64, 64); drawSprite(MON_BIG[ui.showcase], 56, 12); }
   if (ui.dialog) drawDialog();
   if (ui.menu) drawMenu(ui.menu);
+  if (ui.money) { box(88, 0, 72, 20); const t = '¥' + G.money; drawText(t, 153 - t.length * CW, 7); }
+  if (ui.qty) {
+    box(72, 64, 88, 32);
+    drawText('x' + String(ui.qty.n).padStart(2, '0'), 80, 72);
+    const t = '¥' + ui.qty.n * ui.qty.price; drawText(t, 153 - t.length * CW, 83);
+  }
   if (ui.wipe > 0) { const w = Math.round(ui.wipe * 160); for (let i = 0; i < 9; i++) rect(ctx, i % 2 ? 160 - w : 0, i * 16, w, 16, 3); }
   if (ui.flash) { ctx.globalAlpha = 0.8; rect(ctx, 0, 0, 160, 144, 3); ctx.globalAlpha = 1; }
   if (ui.fade > 0) { ctx.globalAlpha = ui.fade; rect(ctx, 0, 0, 160, 144, 0); ctx.globalAlpha = 1; }
@@ -1736,13 +2307,14 @@ function render() {
 const SAVE_KEY = 'pokemon-simple-game-save-v1';
 const AUTOSAVE_TICKS = 60 * 60;
 let lastAutoSave = 0;
-const strip = m => ({ name: m.name, lvl: m.lvl, exp: m.exp, hp: m.hp, moves: m.moves });
+const strip = m => ({ name: m.name, lvl: m.lvl, exp: m.exp, hp: m.hp, moves: m.moves, pp: m.pp, status: m.status, sleep: m.sleep });
 const autosaveOn = () => G.flags.autosave !== false;
 const ago = t => { const s = Math.round((Date.now() - t) / 1000); return s < 60 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} hr ago`; };
 function saveGame() {
   try {
     G.savedAt = Date.now();
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ name: G.name, party: G.party.map(strip), box: G.box.map(strip), balls: G.balls, flags: G.flags, map: G.map, x: G.x, y: G.y, dir: G.dir, savedAt: G.savedAt }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ name: G.name, party: G.party.map(strip), box: G.box.map(strip), money: G.money, bag: G.bag,
+      dex: G.dex, lastHeal: G.lastHeal, flags: G.flags, map: G.map, x: G.x, y: G.y, dir: G.dir, savedAt: G.savedAt }));
     return true;
   } catch (e) { return false; }
 }
@@ -1761,7 +2333,16 @@ function loadGame() {
     const d = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (!d || !Array.isArray(d.party)) return false;
     Object.assign(G, newState(), d);
-    for (const m of [...G.party, ...G.box]) { calcStats(m); m.hp = Math.min(m.hp, m.maxhp); m.dhp = m.hp; }
+    // Saves from version 2 had a ball count instead of a bag, and no Pokédex, PP or status.
+    if (d.balls && !d.bag) G.bag = { 'POKé BALL': d.balls };
+    G.flags.beat = G.flags.beat || {};
+    if (!d.dex) for (const m of [...G.party, ...G.box]) own(m.name);
+    if (G.flags.starter && !d.dex) { G.flags.dex = true; G.flags.rivalLeft = true; }
+    for (const m of [...G.party, ...G.box]) {
+      calcStats(m); m.hp = Math.min(m.hp, m.maxhp); m.dhp = m.hp;
+      if (!Array.isArray(m.pp) || m.pp.length !== m.moves.length) m.pp = m.moves.map(mv => MOVES[mv].pp);
+      m.status = m.status || null;
+    }
     // A save taken mid-battle could have every Pokémon fainted; wake up at home instead.
     if (G.party.length && !G.party.some(m => m.hp > 0)) { healAll(); G.map = 'town'; G.x = 5; G.y = 24; G.dir = 'down'; }
     G.flags.started = true;
