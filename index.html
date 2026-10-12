@@ -63,7 +63,7 @@
 </div>
 <div class="hint" id="hint">
   <kbd>←↑↓→</kbd> move &nbsp; <kbd>Z</kbd>/<kbd>Space</kbd> A (talk, confirm) &nbsp; <kbd>X</kbd> B (back)<br>
-  <kbd>Enter</kbd> START (menu) &nbsp; <kbd>M</kbd> sound on/off
+  <kbd>Enter</kbd> START (menu) &nbsp; <kbd>M</kbd> sound: all / effects only / off
 </div>
 
 <script>
@@ -510,6 +510,94 @@ function sfx(name) {
 }
 
 // ---------------------------------------------------------------------------
+// Music: original chiptune loops. A 25% pulse lead plus a triangle bass, like the Game Boy's
+// pulse and wave channels. Notes are "name:eighths"; every bar is 8 eighths long.
+// ---------------------------------------------------------------------------
+const NOTE_IDX = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const freq = n => { const m = n.match(/^([A-G])(#?)(\d)$/); return 440 * 2 ** ((12 * (+m[3] + 1) + NOTE_IDX[m[1]] + (m[2] ? 1 : 0) - 69) / 12); };
+const parseSeq = bars => bars.join(' ').trim().split(/\s+/).map(t => { const [n, d] = t.split(':'); return [n === '-' ? 0 : freq(n), +d]; });
+const bounce = (lo, hi) => `${lo}:1 ${hi}:1 `.repeat(4);
+const walk = (a, b, c, d) => `${a}:2 ${b}:2 ${c}:2 ${d}:2`;
+const SONGS = {
+  title: { bpm: 140, loop: true, lead: [
+    'G4:2 C5:2 E5:2 G5:2', 'A5:3 G5:1 E5:2 C5:2', 'F5:2 A5:2 C6:3 A5:1', 'G5:6 -:2',
+    'E5:2 G5:2 C6:2 B5:1 A5:1', 'A5:2 E5:2 C5:2 E5:2', 'F5:2 A5:2 G5:2 B5:2', 'C6:6 -:2'],
+    bass: [bounce('C3', 'C4'), bounce('A2', 'A3'), bounce('F2', 'F3'), bounce('G2', 'G3'),
+      bounce('C3', 'C4'), bounce('A2', 'A3'), 'F2:1 F3:1 F2:1 F3:1 G2:1 G3:1 G2:1 G3:1', bounce('C3', 'C4')] },
+  town: { bpm: 112, loop: true, lead: [
+    'B4:2 D5:2 G5:3 F#5:1', 'E5:2 G5:2 B4:4', 'C5:2 E5:2 G5:2 E5:2', 'F#5:3 E5:1 D5:4',
+    'B4:2 D5:2 G5:2 A5:2', 'B5:3 A5:1 G5:2 E5:2', 'C5:2 E5:2 D5:2 F#5:2', 'G5:6 -:2'],
+    bass: [walk('G2', 'D3', 'G3', 'D3'), walk('E2', 'B2', 'E3', 'B2'), walk('C3', 'G2', 'C3', 'G2'), walk('D3', 'A2', 'D3', 'A2'),
+      walk('G2', 'D3', 'G3', 'D3'), walk('E2', 'B2', 'E3', 'B2'), walk('A2', 'E3', 'D3', 'A2'), walk('G2', 'D3', 'G2', '-')] },
+  route: { bpm: 150, loop: true, lead: [
+    'A4:1 D5:1 F#5:1 A5:1 F#5:1 D5:1 F#5:2', 'B5:2 A5:1 F#5:1 D5:2 B4:2', 'G5:1 A5:1 B5:2 D6:2 B5:2', 'A5:4 E5:2 C#5:2',
+    'D5:1 F#5:1 A5:1 D6:1 C#6:1 A5:1 F#5:2', 'B5:2 D6:2 F#5:2 B5:2', 'G5:2 B5:2 A5:2 C#6:2', 'D6:4 A5:2 -:2'],
+    bass: [bounce('D3', 'D4'), bounce('B2', 'B3'), bounce('G2', 'G3'), bounce('A2', 'A3'),
+      bounce('D3', 'D4'), bounce('B2', 'B3'), 'G2:1 G3:1 G2:1 G3:1 A2:1 A3:1 A2:1 A3:1', bounce('D3', 'D4')] },
+  battle: { bpm: 168, loop: true, lead: [
+    'A4:1 C5:1 E5:1 A5:1 G#5:1 A5:1 E5:2', 'A4:1 C5:1 E5:1 A5:1 B5:1 C6:1 B5:2', 'A5:1 G5:1 F5:1 A5:1 C6:2 A5:2', 'B5:1 A5:1 G5:1 B5:1 D6:2 B5:2',
+    'E6:2 C6:1 A5:1 E5:2 A5:2', 'G5:1 A5:1 B5:1 C6:1 B5:1 A5:1 G5:2', 'F5:2 A5:2 C6:2 F6:2', 'E6:2 D6:1 C6:1 B5:2 G#5:2'],
+    bass: [bounce('A2', 'A3'), bounce('A2', 'A3'), bounce('F2', 'F3'), bounce('G2', 'G3'),
+      bounce('A2', 'A3'), bounce('G2', 'G3'), bounce('F2', 'F3'), bounce('E2', 'E3')] },
+  evolve: { bpm: 120, loop: true, lead: ['E5:2 G5:2 B5:4', 'C6:2 B5:2 G5:4', 'A5:2 C6:2 E6:4', 'D#6:4 B5:4'],
+    bass: ['E2:4 B2:4', 'C3:4 G2:4', 'A2:4 E3:4', 'B2:4 F#2:4'] },
+  victory: { bpm: 150, loop: false, lead: ['G5:1 G5:1 G5:1 C6:3 A5:1 B5:1', 'C6:6 -:2'], bass: ['C3:3 C3:3 F3:2', 'G3:2 C3:6'] },
+};
+for (const k in SONGS) {
+  const s = SONGS[k];
+  s.v = [{ seq: parseSeq(s.lead), type: 'pulse', vol: 0.035 }, { seq: parseSeq(s.bass), type: 'triangle', vol: 0.09 }];
+}
+let pulseWave = null;
+function getPulse(a) {
+  if (pulseWave) return pulseWave;
+  const n = 32, re = new Float32Array(n), im = new Float32Array(n);
+  for (let i = 1; i < n; i++) re[i] = 2 / (i * Math.PI) * Math.sin(i * Math.PI * 0.25);
+  return (pulseWave = a.createPeriodicWave(re, im));
+}
+// soundMode: 0 = music + effects, 1 = effects only, 2 = silent.
+let soundMode = 0;
+const mus = { want: null, cur: null, voices: null, nodes: [], out: null };
+function musicTick() {
+  const a = actx; if (!a) return;
+  if (!mus.out) { mus.out = a.createGain(); mus.out.connect(a.destination); }
+  const want = soundMode === 0 ? mus.want : null;
+  const now = a.currentTime;
+  if (want !== mus.cur) {
+    for (const o of mus.nodes) { try { o.stop(now + 0.02); } catch (e) { /* already stopped */ } }
+    mus.nodes = []; mus.cur = want;
+    mus.voices = want ? SONGS[want].v.map(v => ({ ...v, i: 0, t: now + 0.08 })) : null;
+  }
+  if (!mus.voices) return;
+  const song = SONGS[mus.cur], step = 30 / song.bpm;
+  for (const v of mus.voices) {
+    if (v.t < now - 0.05) v.t = now + 0.05; // the tab was in the background; skip ahead instead of bursting
+    while (!v.done && v.t < now + 0.2) {
+      if (v.i >= v.seq.length) { if (!song.loop) { v.done = true; break; } v.i = 0; }
+      const [f, d] = v.seq[v.i++], dur = d * step;
+      if (f) playNote(a, v, f, v.t, dur);
+      v.t += dur;
+    }
+  }
+  mus.nodes = mus.nodes.filter(o => o.end > now);
+}
+function playNote(a, v, f, t, dur) {
+  const o = a.createOscillator(), g = a.createGain(), len = Math.max(0.03, dur * 0.9);
+  if (v.type === 'pulse') o.setPeriodicWave(getPulse(a)); else o.type = v.type;
+  o.frequency.value = f;
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v.vol, t + 0.01);
+  g.gain.setValueAtTime(v.vol, t + len * 0.6); g.gain.linearRampToValueAtTime(0.0001, t + len);
+  o.connect(g).connect(mus.out); o.start(t); o.stop(t + len + 0.02);
+  o.end = t + len + 0.02; mus.nodes.push(o);
+}
+function currentTrack() {
+  if (G.scene === 'title') return 'title';
+  if (G.scene === 'evolve') return 'evolve';
+  if (G.scene === 'battle' || ui.battleIntro) return B && B.victory ? 'victory' : 'battle';
+  if (G.scene === 'intro' || G.map === 'lab') return 'town';
+  return G.y <= 19 ? 'route' : 'town';
+}
+
+// ---------------------------------------------------------------------------
 // Input
 // ---------------------------------------------------------------------------
 const held = {}, pressed = {};
@@ -518,7 +606,10 @@ const KEYMAP = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight
 function press(k) {
   if (!held[k]) { pressed[k] = true; if (DIRS[k]) dirStack.push(k); }
   held[k] = true; audio();
-  if (k === 'SELECT') { muted = !muted; ui.toast = muted ? 'SOUND OFF' : 'SOUND ON'; ui.toastT = 70; }
+  if (k === 'SELECT') {
+    soundMode = (soundMode + 1) % 3; muted = soundMode === 2;
+    ui.toast = ['SOUND ON', 'MUSIC OFF', 'SOUND OFF'][soundMode]; ui.toastT = 70;
+  }
 }
 function release(k) { held[k] = false; dirStack = dirStack.filter(d => d !== k); }
 addEventListener('keydown', e => { const k = KEYMAP[e.key]; if (!k) return; e.preventDefault(); if (!e.repeat) press(k); });
@@ -605,6 +696,7 @@ function tick() {
   }
   if (ui.toastT > 0) ui.toastT--;
   if (ui.evo && ui.evo.flicker && pressed.B) ui.evo.cancel = true;
+  mus.want = currentTrack(); musicTick();
   // Periodic autosave: once a minute, whenever the player is standing still in the overworld.
   if (G.scene === 'world' && !busy && P.off === 0 && !ui.menu && !ui.dialog && frame - lastAutoSave >= AUTOSAVE_TICKS) { lastAutoSave = frame; autoSave(); }
 
@@ -864,13 +956,14 @@ function rollWild() {
   return makeMon('PIDGEY', 3);
 }
 async function startBattle(wild) {
-  sfx('encounter');
+  ui.battleIntro = true;
+  if (soundMode === 1) sfx('encounter');
   await tween(24, t => { ui.flash = Math.floor(t * 24 / 4) % 2 === 0; });
   ui.flash = false;
   await tween(24, t => { ui.wipe = t; });
   B = { enemy: { mon: wild, st: stages() }, ally: null, eX: -112, eOffY: 0, eVis: true, eHide: false, eInfo: false,
     aX: 0, aOffY: 0, aVis: false, aHide: false, aInfo: false, aPop: 0, ball: null, runTries: 0, lastAct: 0, lastMove: 0, leveled: new Set() };
-  G.scene = 'battle'; ui.wipe = 0;
+  G.scene = 'battle'; ui.wipe = 0; ui.battleIntro = false;
   await tween(36, t => { B.eX = Math.round(-112 * (1 - t)); });
   B.eInfo = true;
   await say(`Wild ${wild.name} appeared!`);
@@ -1044,7 +1137,7 @@ async function enemyFainted() {
   const e = B.enemy.mon, a = B.ally.mon;
   sfx('faint');
   await tween(16, t => { B.eOffY = Math.round(48 * t); });
-  B.eVis = false; B.eInfo = false;
+  B.eVis = false; B.eInfo = false; B.victory = true;
   await say(`Wild ${e.name} fainted!`);
   // Double the classic EXP formula so levels (and evolutions) come at a friendlier pace.
   const gain = Math.max(1, Math.floor(SPECIES[e.name].exp * e.lvl / 7) * 2);
@@ -1104,7 +1197,8 @@ async function throwBall() {
   await wait(16);
   ui.dialog = null;
   if (caught) {
-    sfx('caught');
+    B.victory = true;
+    if (soundMode === 1) sfx('caught');
     G.flags.caught = (G.flags.caught || 0) + 1;
     await say(`All right! ${m.name} was caught!`);
     if (G.party.length < 6) { G.party.push(m); await say(`${m.name} joined your team!`); }

@@ -12,7 +12,7 @@ Open `index.html` in any modern browser.
 | Talk / confirm (A) | `Z` or `Space` | A |
 | Back (B) | `X` or `Esc` | B |
 | Menu (START) | `Enter` | START |
-| Sound on/off | `M` | SOUND |
+| Sound: all / effects only / off | `M` | SOUND |
 
 ## What's in it
 
@@ -25,6 +25,7 @@ Open `index.html` in any modern browser.
 - **Evolution**: all 8 families evolve (e.g. Charmander → Charmeleon at 12 → Charizard at 24, Caterpie → Metapod at 7 → Butterfree at 10). Hold or press B to stop an evolution; it tries again at the next level. Each evolution teaches a new move.
 - A start menu with your party, a summary screen, the bag, SAVE, and an AUTOSAVE switch
 - **Autosave** to the browser's local storage: every minute while exploring, after battles, healing and story events, and when you close the tab or switch apps
+- Original chiptune music for the title, Pallet Town, Route 1, battles and evolution, plus a victory fanfare
 - Healing at home (Mom) or in the lab (Oak, who also tops up your Poké Balls)
 
 Pokémon is © Nintendo / Game Freak / The Pokémon Company. This is a non-commercial fan project.
