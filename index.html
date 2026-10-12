@@ -122,25 +122,27 @@ const FONT = {
   '▶': 'x.... xx... xxx.. xxxx. xxx.. xx... x....',
   '▼': '..... ..... xxxxx .xxx. ..x.. ..... .....',
 };
+// Glyphs are stored 5 wide for readability and widened to 7 (in an 8px cell, like the Game Boy font).
+const CW = 8, WIDEN = [0, 1, 1, 2, 3, 3, 4];
 const GLYPH = {};
 function glyph(c, col) {
   const k = c + col;
   if (k in GLYPH) return GLYPH[k];
   const src = FONT[c];
   if (!src) return (GLYPH[k] = null);
-  const g = mk(5, 7), gc = g.getContext('2d');
-  src.split(' ').forEach((r, y) => [...r].forEach((ch, x) => { if (ch === 'x') rect(gc, x, y, 1, 1, col); }));
+  const g = mk(7, 7), gc = g.getContext('2d');
+  src.split(' ').map(r => WIDEN.map(i => r[i]).join('')).forEach((r, y) => [...r].forEach((ch, x) => { if (ch === 'x') rect(gc, x, y, 1, 1, col); }));
   return (GLYPH[k] = g);
 }
 const norm = c => (c === 'é' || c === 'É') ? 'é' : c.toUpperCase();
 function drawText(s, x, y, col = 3, sc = 1) {
   let cx = x;
   for (const ch of String(s)) {
-    if (ch !== ' ') { const g = glyph(norm(ch), col); if (g) ctx.drawImage(g, cx, y, 5 * sc, 7 * sc); }
-    cx += 6 * sc;
+    if (ch !== ' ') { const g = glyph(norm(ch), col); if (g) ctx.drawImage(g, cx, y, 7 * sc, 7 * sc); }
+    cx += CW * sc;
   }
 }
-const centerText = (s, y, col = 3, sc = 1) => drawText(s, Math.round((160 - (s.length * 6 - 1) * sc) / 2), y, col, sc);
+const centerText = (s, y, col = 3, sc = 1) => drawText(s, Math.round((160 - (s.length * CW - 1) * sc) / 2), y, col, sc);
 function box(x, y, w, h) { rect(ctx, x, y, w, h, 3); rect(ctx, x + 1, y + 1, w - 2, h - 2, 0); rect(ctx, x + 2, y + 2, w - 4, h - 4, 3); rect(ctx, x + 3, y + 3, w - 6, h - 6, 0); }
 
 // ---------------------------------------------------------------------------
@@ -215,7 +217,11 @@ const PL = {
   right: [sprite(mirror(P_LEFT)), sprite(mirror(lstep)), sprite(mirror(lstep))],
 };
 const OAK = sprite(OAK_ROWS);
+const OAK_BIG = sprite(shade(scale3x(OAK_ROWS)));
+const TRAINER_BACK = sprite(scale2x(P_UP));
 const BALL = sprite(['..3333..', '.322223.', '32222223', '33300333', '30000003', '30000003', '.300003.', '..3333..']);
+const BALL_FNT = sprite(['..3333..', '.333333.', '33333333', '33300333', '33333333', '33333333', '.333333.', '..3333..']);
+const BALL_NONE = sprite(['..3333..', '.3....3.', '3......3', '3......3', '3......3', '3......3', '.3....3.', '..3333..']);
 
 // ---------------------------------------------------------------------------
 // Pokémon data
@@ -342,8 +348,73 @@ const LEARN = {
   PIDGEOT: 'AGILITY', RATICATE: 'HYPER FANG', METAPOD: 'HARDEN', BUTTERFREE: 'CONFUSION',
   KAKUNA: 'HARDEN', BEEDRILL: 'TWINEEDLE',
 };
-const MON_IMG = {};
-for (const k in SPECIES) MON_IMG[k] = sprite(SPECIES[k].art);
+// Battle-quality art. The 16x16 designs are upscaled with Scale3x (smooth diagonals at one screen
+// pixel per art pixel, like the 56x56 Game Boy sprites) and given a soft inner shadow. Your own
+// Pokémon is shown from behind at a chunky 2x, the way the originals drew back sprites.
+function px2(rows, x, y) { return (y < 0 || y >= rows.length || x < 0 || x >= rows[0].length) ? '.' : rows[y][x]; }
+function scale2x(rows) {
+  const out = [];
+  rows.forEach((r, y) => {
+    const top = [], bot = [];
+    for (let x = 0; x < r.length; x++) {
+      const P = r[x], A = px2(rows, x, y - 1), Bn = px2(rows, x + 1, y), Cn = px2(rows, x - 1, y), D = px2(rows, x, y + 1);
+      top.push(Cn === A && Cn !== D && A !== Bn ? A : P, A === Bn && A !== Cn && Bn !== D ? Bn : P);
+      bot.push(D === Cn && D !== Bn && Cn !== A ? Cn : P, Bn === D && Bn !== A && D !== Cn ? D : P);
+    }
+    out.push(top.join(''), bot.join(''));
+  });
+  return out;
+}
+function scale3x(rows) {
+  const out = [];
+  rows.forEach((r, y) => {
+    const o = [[], [], []];
+    for (let x = 0; x < r.length; x++) {
+      const A = px2(rows, x - 1, y - 1), Bn = px2(rows, x, y - 1), Cn = px2(rows, x + 1, y - 1);
+      const D = px2(rows, x - 1, y), E = r[x], F = px2(rows, x + 1, y);
+      const Gn = px2(rows, x - 1, y + 1), H = px2(rows, x, y + 1), I = px2(rows, x + 1, y + 1);
+      o[0].push(D === Bn && D !== H && Bn !== F ? D : E,
+        (D === Bn && D !== H && Bn !== F && E !== Cn) || (Bn === F && Bn !== D && F !== H && E !== A) ? Bn : E,
+        Bn === F && Bn !== D && F !== H ? F : E);
+      o[1].push((D === Bn && D !== H && Bn !== F && E !== Gn) || (D === H && D !== Bn && H !== F && E !== A) ? D : E, E,
+        (Bn === F && Bn !== D && F !== H && E !== I) || (H === F && H !== Bn && F !== D && E !== Cn) ? F : E);
+      o[2].push(D === H && D !== Bn && H !== F ? D : E,
+        (D === H && D !== Bn && H !== F && E !== I) || (H === F && H !== Bn && F !== D && E !== Gn) ? H : E,
+        H === F && H !== Bn && F !== D ? F : E);
+    }
+    out.push(...o.map(a => a.join('')));
+  });
+  return out;
+}
+// Darken fill pixels that sit on a bottom-right edge, for a hint of the originals' shading.
+function shade(rows) {
+  const darker = { 0: '1', 1: '2' };
+  return rows.map((r, y) => [...r].map((c, x) => {
+    if (!(c in darker)) return c;
+    const br = px2(rows, x + 1, y + 1), tl = px2(rows, x - 1, y - 1);
+    return (br === '3' || br === '.') && tl !== '3' && tl !== '.' ? darker[c] : c;
+  }).join(''));
+}
+// Turn a front view into a rough back view: erase eyes and mouths (small dark marks inside the head).
+function backify(rows) {
+  const out = rows.map(r => [...r]), lim = Math.ceil(rows.length * 0.6);
+  for (let y = 1; y < lim; y++) for (let x = 1; x < rows[0].length - 1; x++) {
+    const c = rows[y][x];
+    if (c !== '3' && c !== '0') continue;
+    const nb = [rows[y - 1][x], rows[y + 1][x], rows[y][x - 1], rows[y][x + 1]];
+    if (nb.includes('.') || nb.filter(n => n === '3').length > 1) continue;
+    const fill = nb.filter(n => n === '1' || n === '2');
+    if (fill.length >= 2) out[y][x] = fill[0];
+  }
+  return out.map(a => a.join(''));
+}
+const MON_IMG = {}, MON_BIG = {}, MON_BACK = {};
+for (const k in SPECIES) {
+  const art = SPECIES[k].art;
+  MON_IMG[k] = sprite(art);
+  MON_BIG[k] = sprite(shade(scale3x(art)));
+  MON_BACK[k] = sprite(scale2x(backify(mirror(art))));
+}
 const STARTERS = ['BULBASAUR', 'CHARMANDER', 'SQUIRTLE', 'PIKACHU'];
 const WILD = [['PIDGEY', 34, 2, 5], ['RATTATA', 34, 2, 4], ['CATERPIE', 15, 3, 5], ['WEEDLE', 14, 3, 5], ['PIKACHU', 3, 3, 5]];
 
@@ -644,7 +715,7 @@ function wrap(text, max) {
 }
 function say(text, opts = {}) {
   return new Promise(res => {
-    const lines = wrap(text, 24), pages = [];
+    const lines = wrap(text, 18), pages = [];
     for (let i = 0; i < lines.length; i += 2) pages.push(lines.slice(i, i + 2));
     ui.dialog = { pages, page: 0, chars: 0, res, keep: !!opts.keep, done: false };
   });
@@ -652,7 +723,7 @@ function say(text, opts = {}) {
 function choose(opts, o = {}) {
   return new Promise(res => {
     const spacing = o.spacing || 16;
-    const w = o.w || 24 + Math.max(...opts.map(s => s.length)) * 6;
+    const w = o.w || 24 + Math.max(...opts.map(s => s.length)) * CW;
     const h = o.h || 8 + opts.length * spacing;
     ui.menu = { opts, res, idx: o.idx || 0, cols: o.cols || 1, cancel: o.cancel !== false, spacing, w, h,
       x: o.x ?? 160 - w, y: o.y ?? 96 - h, colW: o.colW, draw: o.draw, extra: o.extra, battle: o.battle };
@@ -661,7 +732,7 @@ function choose(opts, o = {}) {
 const waitButton = () => new Promise(r => { ui.waitBtn = r; });
 async function ask(text) {
   await say(text, { keep: true });
-  const i = await choose(['YES', 'NO'], { x: 118, y: 56, w: 42, h: 40 });
+  const i = await choose(['YES', 'NO'], { x: 112, y: 56, w: 48, h: 40 });
   ui.dialog = null;
   return i === 0;
 }
@@ -811,7 +882,7 @@ async function talkOak() {
       await say('You may have one! Check a POKé BALL, or just tell me which one you want.');
     }
     await say('Which POKéMON will you choose?', { keep: true });
-    const i = await choose([...STARTERS, 'CANCEL'], { x: 72, y: 8, w: 88, h: 88 });
+    const i = await choose([...STARTERS, 'CANCEL'], { x: 56, y: 8, w: 104, h: 88 });
     ui.dialog = null;
     if (i >= 0 && i < 4) await offerStarter(i);
     return;
@@ -856,7 +927,7 @@ async function offerStarter(i) {
 async function startMenu() {
   let i = 0;
   while (true) {
-    i = await choose(['POKéMON', 'BAG', 'SAVE', 'AUTOSAVE', 'EXIT'], { x: 88, y: 0, w: 72, idx: i });
+    i = await choose(['POKéMON', 'BAG', 'SAVE', 'AUTOSAVE', 'EXIT'], { y: 0, idx: i });
     if (i < 0 || i === 4) return;
     if (i === 0) {
       if (!G.party.length) await say("You don't have any POKéMON yet!");
@@ -887,7 +958,7 @@ async function partyMenuWorld() {
     idx = await choose(G.party.map(m => m.name), { idx, draw: partyCursor });
     if (idx < 0) break;
     ui.partyIdx = idx;
-    const sub = await choose(['SUMMARY', 'SWITCH', 'CANCEL'], { x: 88, y: 40, w: 72, h: 56 });
+    const sub = await choose(['SUMMARY', 'SWITCH', 'CANCEL'], { x: 80, y: 40, w: 80, h: 56 });
     ui.dialog = null;
     if (sub === 0) { ui.overlay = 'summary'; ui.summaryMon = G.party[idx]; await waitButton(); }
     else if (sub === 1) {
@@ -906,7 +977,7 @@ async function partyPick(forced) {
 }
 const pad3 = n => String(n).padStart(3, ' ');
 function hpBar(x, y, m, label = true) {
-  const bx = label ? x + 18 : x;
+  const bx = label ? x + 3 * CW : x;
   if (label) drawText('HP:', x, y);
   rect(ctx, bx, y + 1, 50, 5, 3); rect(ctx, bx + 1, y + 2, 48, 3, 0);
   const f = m.dhp > 0 ? Math.max(1, Math.ceil(48 * m.dhp / m.maxhp)) : 0;
@@ -917,8 +988,8 @@ function drawParty() {
   G.party.forEach((m, i) => {
     const y = i * 16;
     drawSprite(MON_IMG[m.name], 12, y);
-    drawText(m.name, 32, y + 1);
-    drawText(':L' + m.lvl, 112, y + 1);
+    drawText(m.name, 32, y);
+    drawText(':L' + m.lvl, 116, y);
     hpBar(32, y + 8, m, false);
     drawText(m.hp > 0 ? `${pad3(m.hp)}/${pad3(m.maxhp)}` : 'FAINTED', 88, y + 8);
     if (i === ui.partyIdx) drawText('▶', 2, y + 4);
@@ -927,18 +998,19 @@ function drawParty() {
 function drawSummary() {
   const m = ui.summaryMon, s = SPECIES[m.name];
   box(0, 0, 160, 144);
-  drawSprite(MON_IMG[m.name], 8, 8, 3);
-  drawText(m.name, 64, 10);
-  drawText(':L' + m.lvl, 64, 20);
-  drawText('TYPE/', 64, 32);
-  s.types.forEach((t, i) => drawText(t, 72, 42 + i * 10));
-  hpBar(8, 62, m);
-  drawText(`${pad3(m.hp)}/${pad3(m.maxhp)}`, 80, 62);
-  [['ATTACK', m.atk], ['DEFENSE', m.def], ['SPEED', m.spd], ['EXP', m.exp], ['NEXT', (m.lvl + 1) ** 3 - m.exp]].forEach(([k, v], i) => {
-    drawText(k, 8, 78 + i * 11); drawText(pad3(v).padStart(4, ' '), 50, 78 + i * 11);
-  });
-  drawText('MOVES', 84, 78);
-  m.moves.forEach((mv, i) => drawText(mv, 84, 89 + i * 11));
+  drawSprite(MON_BIG[m.name], 8, 6);
+  drawText(m.name, 64, 8);
+  drawText(':L' + m.lvl, 64, 18);
+  drawText('TYPE/', 64, 30);
+  s.types.forEach((t, i) => drawText(t, 72, 40 + i * 9));
+  hpBar(8, 60, m);
+  drawText(`${pad3(m.hp)}/${pad3(m.maxhp)}`, 88, 60);
+  drawText('ATK', 8, 72); drawText(pad3(m.atk), 40, 72);
+  drawText('DEF', 80, 72); drawText(pad3(m.def), 112, 72);
+  drawText('SPD', 8, 82); drawText(pad3(m.spd), 40, 82);
+  drawText('EXP', 80, 82); drawText(String(m.exp), 112, 82);
+  drawText('TO NEXT LV', 8, 92); drawText(String((m.lvl + 1) ** 3 - m.exp), 96, 92);
+  m.moves.forEach((mv, i) => drawText(mv, 16, 104 + i * 9));
 }
 
 // ---------------------------------------------------------------------------
@@ -962,11 +1034,15 @@ async function startBattle(wild) {
   ui.flash = false;
   await tween(24, t => { ui.wipe = t; });
   B = { enemy: { mon: wild, st: stages() }, ally: null, eX: -112, eOffY: 0, eVis: true, eHide: false, eInfo: false,
-    aX: 0, aOffY: 0, aVis: false, aHide: false, aInfo: false, aPop: 0, ball: null, runTries: 0, lastAct: 0, lastMove: 0, leveled: new Set() };
+    aX: 0, aOffY: 0, aVis: false, aHide: false, aInfo: false, aPop: 0, ball: null, runTries: 0, lastAct: 0, lastMove: 0, leveled: new Set(),
+    tX: 160, showBalls: false };
   G.scene = 'battle'; ui.wipe = 0; ui.battleIntro = false;
-  await tween(36, t => { B.eX = Math.round(-112 * (1 - t)); });
-  B.eInfo = true;
+  await tween(40, t => { B.eX = Math.round(-112 * (1 - t)); B.tX = Math.round(8 + 152 * (1 - t)); });
+  B.eInfo = true; B.showBalls = true;
   await say(`Wild ${wild.name} appeared!`);
+  B.showBalls = false;
+  await tween(16, t => { B.tX = Math.round(8 - 80 * t); });
+  B.tX = null;
   await sendOut(G.party.find(m => m.hp > 0));
   const result = await battleLoop();
   ui.dialog = null;
@@ -1041,13 +1117,13 @@ async function withdraw() {
 async function battleLoop() {
   while (true) {
     const a = B.ally, e = B.enemy;
-    const act = await choose(['FIGHT', 'PKMN', 'BALL', 'RUN'], { x: 64, y: 96, w: 96, h: 48, cols: 2, colW: 40, cancel: false, idx: B.lastAct, battle: true });
+    const act = await choose(['FIGHT', 'PKMN', 'BALL', 'RUN'], { x: 56, y: 96, w: 104, h: 48, cols: 2, colW: 52, cancel: false, idx: B.lastAct, battle: true });
     B.lastAct = act;
     let move = null;
     if (act === 0) {
       const moves = a.mon.moves;
-      const mi = await choose(moves, { x: 40, y: 96, w: 120, h: 48, spacing: 9, idx: Math.min(B.lastMove, moves.length - 1),
-        extra: m => { box(0, 64, 72, 32); drawText('TYPE/', 8, 72); drawText(MOVES[moves[m.idx]].type, 16, 82); } });
+      const mi = await choose(moves, { x: 32, y: 96, w: 128, h: 48, spacing: 9, idx: Math.min(B.lastMove, moves.length - 1),
+        extra: m => { box(0, 64, 88, 32); drawText('TYPE/', 8, 72); drawText(MOVES[moves[m.idx]].type, 16, 82); } });
       if (mi < 0) continue;
       B.lastMove = mi; move = moves[mi];
     } else if (act === 1) {
@@ -1182,10 +1258,10 @@ async function throwBall() {
   await say(`${G.name} used POKé BALL!`, { keep: true });
   sfx('throw');
   B.ball = { x: 24, y: 88, wob: 0 };
-  await tween(24, t => { B.ball.x = Math.round(24 + 92 * t); B.ball.y = Math.round(88 - 62 * t - 40 * Math.sin(Math.PI * t)); });
+  await tween(24, t => { B.ball.x = Math.round(24 + 92 * t); B.ball.y = Math.round(80 - 60 * t - 36 * Math.sin(Math.PI * t)); });
   for (let i = 0; i < 3; i++) { B.eHide = true; await wait(3); B.eHide = false; await wait(3); }
   B.eVis = false;
-  await tween(10, t => { B.ball.y = Math.round(26 + 12 * t); });
+  await tween(10, t => { B.ball.y = Math.round(20 + 18 * t); });
   const a = Math.max(1, Math.floor((3 * m.maxhp - 2 * m.hp) * SPECIES[m.name].rate / (3 * m.maxhp)));
   const p = Math.min(1, a / 255), caught = Math.random() < p;
   const shakes = caught ? 3 : Math.min(2, Math.floor(Math.random() * 3 * Math.min(1, p * 2.5)));
@@ -1229,45 +1305,55 @@ function drawWorld() {
 }
 function drawBattle() {
   const e = B.enemy.mon, a = B.ally && B.ally.mon;
+  // Enemy: full-detail front sprite in the top right.
   if (B.eVis && !B.eHide) {
-    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 160, 54); ctx.clip();
-    drawSprite(MON_IMG[e.name], 100 + B.eX, 6 + B.eOffY, 3);
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 160, 56); ctx.clip();
+    drawSprite(MON_BIG[e.name], 102 + B.eX, 6 + B.eOffY);
     ctx.restore();
   }
   if (B.eInfo) {
-    drawText(e.name, 8, 4);
-    drawText(':L' + e.lvl, 40, 13);
-    hpBar(8, 22, e);
-    rect(ctx, 6, 14, 1, 17, 3); rect(ctx, 6, 30, 74, 1, 3); rect(ctx, 79, 29, 2, 2, 3);
+    drawText(e.name, 8, 2);
+    drawText(':L' + e.lvl, 32, 10);
+    hpBar(12, 18, e);
+    rect(ctx, 8, 12, 1, 15, 3); rect(ctx, 8, 26, 80, 1, 3); rect(ctx, 87, 25, 2, 2, 3);
   }
+  // Trainer back sprite during the opening, and your Pokémon from behind (both chunky, cut off by the text box).
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 160, 96); ctx.clip();
+  if (B.tX != null) drawSprite(TRAINER_BACK, B.tX, 32, 2);
   if (a && B.aVis && !B.aHide && B.aPop > 0) {
-    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 160, 92); ctx.clip();
-    if (B.aPop >= 1) drawSprite(MON_IMG[a.name], 12 + B.aX, 44 + B.aOffY, 3, true);
-    else { const sc = Math.max(1, Math.round(3 * B.aPop)); drawSprite(MON_IMG[a.name], 36 - 8 * sc, 92 - 16 * sc, sc, true); }
-    ctx.restore();
+    if (B.aPop >= 1) drawSprite(MON_BACK[a.name], 8 + B.aX, 32 + B.aOffY, 2);
+    else { const sz = Math.round(64 * B.aPop); ctx.drawImage(MON_BACK[a.name], 40 - sz / 2, 96 - sz, sz, sz); }
+  }
+  ctx.restore();
+  if (B.showBalls) {
+    for (let i = 0; i < 6; i++) {
+      const m = G.party[i];
+      drawSprite(!m ? BALL_NONE : m.hp > 0 ? BALL : BALL_FNT, 92 + i * 9, 78);
+    }
+    rect(ctx, 152, 70, 1, 19, 3); rect(ctx, 84, 89, 69, 1, 3); rect(ctx, 83, 88, 2, 2, 3);
   }
   if (a && B.aInfo) {
     drawText(a.name, 80, 56);
-    drawText(':L' + a.lvl, 120, 65);
-    hpBar(80, 73, a);
-    drawText(`${pad3(a.dhp)}/${pad3(a.maxhp)}`, 106, 81);
-    rect(ctx, 152, 64, 1, 26, 3); rect(ctx, 78, 89, 75, 1, 3); rect(ctx, 77, 88, 2, 2, 3);
+    drawText(':L' + a.lvl, 112, 64);
+    hpBar(76, 72, a);
+    drawText(`${pad3(a.dhp)}/${pad3(a.maxhp)}`, 88, 80);
+    rect(ctx, 152, 64, 1, 25, 3); rect(ctx, 84, 89, 69, 1, 3); rect(ctx, 83, 88, 2, 2, 3);
   }
   if (B.ball) drawSprite(BALL, B.ball.x + B.ball.wob, B.ball.y, 2);
   box(0, 96, 160, 48);
-  if (!ui.dialog && ui.menu && ui.menu.battle) drawText(`BALLS x${G.balls}`, 8, 112);
+  if (!ui.dialog && ui.menu && ui.menu.battle) { drawText('BALLS', 8, 104); drawText('x' + G.balls, 16, 120); }
 }
 function drawTitle() {
-  drawText('POKéMON', 19, 13, 1, 3);
-  drawText('POKéMON', 18, 12, 3, 3);
-  centerText('SIMPLE VERSION', 40, 2);
-  drawSprite(MON_IMG[STARTERS[Math.floor(frame / 120) % 4]], 56, 52, 3);
+  drawText('POKéMON', 25, 11, 1, 2);
+  drawText('POKéMON', 24, 10, 3, 2);
+  centerText('SIMPLE VERSION', 32, 2);
+  drawSprite(MON_BIG[STARTERS[Math.floor(frame / 120) % 4]], 56, 50);
   if (!ui.menu && Math.floor(frame / 30) % 2 === 0) centerText('PRESS START', 112);
   if (!ui.menu) centerText('A FAN-MADE GAME', 132, 1);
 }
 function drawIntro() {
-  drawSprite(OAK, 56, 24, 3);
-  if (ui.introMon) drawSprite(MON_IMG[ui.introMon], 114, 56, 2, true);
+  drawSprite(OAK_BIG, 56, 24);
+  if (ui.introMon) drawSprite(MON_BIG[ui.introMon], 106, 48, 1, true);
 }
 function drawDialog() {
   const d = ui.dialog, page = d.pages[d.page];
@@ -1294,16 +1380,16 @@ function render() {
   else if (G.scene === 'intro') drawIntro();
   else if (G.scene === 'world') drawWorld();
   else if (G.scene === 'battle' && B) drawBattle();
-  else if (G.scene === 'evolve' && ui.evo) drawSprite(MON_IMG[ui.evo.name], 56, 24, 3);
+  else if (G.scene === 'evolve' && ui.evo) drawSprite(MON_BIG[ui.evo.name], 56, 24);
   if (ui.overlay === 'party') drawParty();
   else if (ui.overlay === 'summary') drawSummary();
-  if (ui.showcase) { box(48, 4, 64, 64); drawSprite(MON_IMG[ui.showcase], 56, 12, 3); }
+  if (ui.showcase) { box(48, 4, 64, 64); drawSprite(MON_BIG[ui.showcase], 56, 12); }
   if (ui.dialog) drawDialog();
   if (ui.menu) drawMenu(ui.menu);
   if (ui.wipe > 0) { const w = Math.round(ui.wipe * 160); for (let i = 0; i < 9; i++) rect(ctx, i % 2 ? 160 - w : 0, i * 16, w, 16, 3); }
   if (ui.flash) { ctx.globalAlpha = 0.8; rect(ctx, 0, 0, 160, 144, 3); ctx.globalAlpha = 1; }
   if (ui.fade > 0) { ctx.globalAlpha = ui.fade; rect(ctx, 0, 0, 160, 144, 0); ctx.globalAlpha = 1; }
-  if (ui.toastT > 0) { box(0, 0, 70, 20); drawText(ui.toast, 7, 7); }
+  if (ui.toastT > 0) { box(0, 0, 14 + ui.toast.length * CW, 20); drawText(ui.toast, 7, 7); }
 }
 
 // ---------------------------------------------------------------------------
@@ -1374,7 +1460,7 @@ async function intro() {
   ui.introMon = null;
   await say('First, what is your name?', { keep: true });
   const names = ['RED', 'ASH', 'JACK', 'ZAYN'];
-  const n = await choose(names, { x: 4, y: 8, w: 48, h: 72, cancel: false });
+  const n = await choose(names, { x: 0, y: 8, w: 56, h: 72, cancel: false });
   ui.dialog = null;
   G.name = names[n];
   await say(`Right! So your name is ${G.name}!`);

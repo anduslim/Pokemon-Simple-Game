@@ -1,6 +1,6 @@
 # Pokémon Simple Game
 
-A tiny Pokémon Red–style fan game that runs in the browser. Everything lives in one self-contained file, `index.html`: there's no build step and no dependencies, and all the art is drawn in code with the 4-shade Game Boy palette.
+A tiny Pokémon Red–style fan game that runs in the browser, drawn to look like the 1996 Game Boy originals. Everything lives in one self-contained file, `index.html`: there's no build step and no dependencies, and all the art is drawn in code with the 4-shade Game Boy palette.
 
 ## Play
 
@@ -20,6 +20,7 @@ Open `index.html` in any modern browser.
 - Pallet Town and Oak's lab: choose **Bulbasaur, Charmander, Squirtle or Pikachu**
 - Route 1 with trees, paths, fences and tall grass
 - Random wild encounters (Pidgey, Rattata, Caterpie, Weedle, and a rare Pikachu)
+- Game Boy-style battle screen: detailed 1:1 enemy sprites, your Pokémon seen from behind, the trainer slide-in with party Poké Ball icons, and an 8×8 font
 - Turn-based battles with types, STAB, critical hits, stat-lowering moves, EXP and level-ups
 - Poké Balls with shake animations; caught Pokémon join your team (up to 6)
 - **Evolution**: all 8 families evolve (e.g. Charmander → Charmeleon at 12 → Charizard at 24, Caterpie → Metapod at 7 → Butterfree at 10). Hold or press B to stop an evolution; it tries again at the next level. Each evolution teaches a new move.
