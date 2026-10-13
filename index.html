@@ -195,7 +195,11 @@ T.m = tile(g => { rect(g, 0, 0, 16, 16, 1); for (let x = 0; x < 16; x += 4) rect
 T.Q = tile(g => { g.drawImage(T.l, 0, 0); rect(g, 2, 2, 12, 11, 3); rect(g, 3, 3, 10, 9, 0); rect(g, 6, 4, 1, 7, 3); rect(g, 7, 4, 3, 1, 3); rect(g, 9, 5, 1, 2, 3); rect(g, 7, 7, 3, 1, 3); }); // "P" sign
 T.M = tile(g => { g.drawImage(T.l, 0, 0); rect(g, 2, 2, 12, 11, 3); rect(g, 3, 3, 10, 9, 1); rect(g, 5, 4, 1, 7, 3); rect(g, 10, 4, 1, 7, 3); rect(g, 6, 5, 1, 1, 3); rect(g, 9, 5, 1, 1, 3); rect(g, 7, 6, 2, 1, 3); }); // "M" sign
 T.k = tile(g => { floor(g); rect(g, 0, 2, 16, 12, 3); rect(g, 0, 3, 16, 10, 1); rect(g, 0, 3, 16, 2, 0); }); // shop counter
-const SOLID = new Set('TFSwrRhlndXBCKcmQMk');
+T.v = tile(g => { rect(g, 0, 0, 16, 16, 0); for (const [x, y] of [[3, 2], [11, 4], [6, 9], [13, 12], [2, 13], [9, 14]]) rect(g, x, y, 1, 1, 1); rect(g, 7, 5, 2, 1, 1); }); // cave floor
+T.V = tile(g => { rect(g, 0, 0, 16, 16, 2); rect(g, 0, 0, 16, 1, 1); rect(g, 0, 15, 16, 1, 3); for (const [x, y, w] of [[2, 4, 4], [9, 3, 5], [5, 9, 6], [11, 11, 3], [1, 12, 3]]) { rect(g, x, y, w, 1, 3); rect(g, x, y - 1, w - 1, 1, 1); } }); // rock wall
+T.Y = tile(g => { g.drawImage(T.V, 0, 0); rect(g, 3, 4, 10, 12, 3); rect(g, 4, 3, 8, 1, 3); }); // cave mouth
+T.O = tile(g => { floor(g); rect(g, 2, 3, 12, 11, 3); rect(g, 3, 2, 10, 13, 3); rect(g, 3, 4, 10, 9, 2); rect(g, 4, 3, 8, 2, 1); rect(g, 6, 8, 3, 1, 3); }); // boulder
+const SOLID = new Set('TFSwrRhlndXBCKcmQMkVO');
 
 // ---------------------------------------------------------------------------
 // Character sprites
@@ -240,9 +244,17 @@ const NURSE_ROWS = [
 const BUG_ROWS = [
   '.....333333.....', '...3300000033...', '.33000000000033.', '3333333333333333', '..322222222223..',
   ...P_DOWN.slice(5, 9), ...recolor(P_DOWN.slice(9), { 2: '1' })];
+const hair = (top, body) => [...top, ...P_DOWN.slice(5, 9), ...recolor(P_DOWN.slice(9), body)];
 const NPC_SPR = {
   oak: OAK, blue: sprite(BLUE_ROWS), nurse: sprite(NURSE_ROWS), bug: sprite(BUG_ROWS),
   clerk: sprite(recolor(P_DOWN, { 2: '1' })), man: sprite(recolor(P_DOWN, { 2: '0' })),
+  brock: sprite(hair(['...3.3.33.3.3...', '..323233232323..', '..322222222223..', '.32222222222223.', '.33222222222233.'], { 2: '1' })),
+  misty: sprite(hair(['....33333333....', '...3222222223333', '..32222222222323', '..322222222223.3', '..322222222223..'], { 2: '1', 1: '2' })),
+  rocket: sprite(hair(['....33333333....', '...3333333333...', '..333300333333..', '..333333333333..', '.33333333333333.'], {})),
+  young: sprite(recolor(P_DOWN, { 2: '1', 1: '2' })),
+  lass: sprite(hair(['....33333333....', '...3222222223...', '..322222222223..', '.32222222222223.', '.32222222222223.'], { 2: '0', 1: '1' })),
+  hiker: sprite(hair(['...3333333333...', '..322222222223..', '3333333333333333', '..322222222223..', '..322222222223..'], { 2: '1' })),
+  sci: sprite(recolor(OAK_ROWS, { 1: '2' })), guard: sprite(recolor(P_DOWN, { 1: '2' })),
 };
 const OAK_BIG = sprite(shade(scale3x(OAK_ROWS)));
 const TRAINER_BACK = sprite(scale2x(P_UP));
@@ -356,6 +368,30 @@ Object.assign(SPECIES, {
     '.3..32223..3....', '33..31113..33...', '3...32223...3...', '....31113.......',
     '....32223.......', '.....313........', '......3.........', '................'] },
 });
+// Version 6: Pokémon from Route 3, Mt. Moon, Cerulean and the gyms, plus MEW and MEWTWO.
+// Psychic Pokémon use their Special stat as ATTACK, since this game has a single attack stat.
+Object.assign(SPECIES, {
+  SPEAROW: { types: ['NORMAL', 'FLYING'], hp: 40, atk: 60, def: 30, spd: 70, rate: 255, exp: 58, moves: ['PECK', 'GROWL', 'LEER'] },
+  FEAROW: { types: ['NORMAL', 'FLYING'], hp: 65, atk: 90, def: 65, spd: 100, rate: 90, exp: 162, moves: ['PECK', 'LEER', 'DRILL PECK'] },
+  JIGGLYPUFF: { types: ['NORMAL'], hp: 115, atk: 45, def: 20, spd: 20, rate: 170, exp: 76, moves: ['SING', 'POUND'] },
+  MANKEY: { types: ['FIGHTING'], hp: 40, atk: 80, def: 35, spd: 70, rate: 190, exp: 74, moves: ['SCRATCH', 'LEER', 'KARATE CHOP'] },
+  SANDSHREW: { types: ['GROUND'], hp: 50, atk: 75, def: 85, spd: 40, rate: 255, exp: 93, moves: ['SCRATCH', 'SAND-ATTACK'] },
+  ZUBAT: { types: ['POISON', 'FLYING'], hp: 40, atk: 45, def: 35, spd: 55, rate: 255, exp: 54, moves: ['LEECH LIFE', 'SUPERSONIC'] },
+  GOLBAT: { types: ['POISON', 'FLYING'], hp: 75, atk: 80, def: 70, spd: 90, rate: 90, exp: 171, moves: ['LEECH LIFE', 'SUPERSONIC', 'WING ATTACK'] },
+  GEODUDE: { types: ['ROCK', 'GROUND'], hp: 40, atk: 80, def: 100, spd: 20, rate: 255, exp: 86, moves: ['TACKLE', 'DEFENSE CURL', 'ROCK THROW'] },
+  ONIX: { types: ['ROCK', 'GROUND'], hp: 35, atk: 45, def: 160, spd: 70, rate: 45, exp: 108, moves: ['TACKLE', 'SCREECH', 'ROCK THROW'] },
+  CLEFAIRY: { types: ['NORMAL'], hp: 70, atk: 45, def: 48, spd: 35, rate: 150, exp: 68, moves: ['POUND', 'GROWL', 'SING'] },
+  PARAS: { types: ['BUG', 'GRASS'], hp: 35, atk: 70, def: 55, spd: 25, rate: 190, exp: 70, moves: ['SCRATCH', 'STUN SPORE'] },
+  PARASECT: { types: ['BUG', 'GRASS'], hp: 60, atk: 95, def: 80, spd: 30, rate: 75, exp: 128, moves: ['SCRATCH', 'STUN SPORE', 'LEECH LIFE'] },
+  ODDISH: { types: ['GRASS', 'POISON'], hp: 45, atk: 60, def: 55, spd: 30, rate: 255, exp: 78, moves: ['ABSORB', 'POISONPOWDER'] },
+  ABRA: { types: ['PSYCHIC'], hp: 25, atk: 90, def: 15, spd: 90, rate: 200, exp: 73, moves: ['TELEPORT'] },
+  KADABRA: { types: ['PSYCHIC'], hp: 40, atk: 105, def: 30, spd: 105, rate: 100, exp: 145, moves: ['TELEPORT', 'CONFUSION'] },
+  PSYDUCK: { types: ['WATER'], hp: 50, atk: 52, def: 48, spd: 55, rate: 190, exp: 80, moves: ['SCRATCH', 'TAIL WHIP', 'WATER GUN'] },
+  STARYU: { types: ['WATER'], hp: 30, atk: 70, def: 55, spd: 85, rate: 225, exp: 105, moves: ['TACKLE', 'WATER GUN', 'HARDEN'] },
+  STARMIE: { types: ['WATER', 'PSYCHIC'], hp: 60, atk: 100, def: 85, spd: 115, rate: 60, exp: 207, moves: ['WATER GUN', 'HARDEN', 'BUBBLEBEAM', 'SWIFT'] },
+  MEW: { types: ['PSYCHIC'], hp: 100, atk: 100, def: 100, spd: 100, rate: 45, exp: 270, moves: ['POUND', 'MEGA PUNCH', 'PSYCHIC', 'RECOVER'] },
+  MEWTWO: { types: ['PSYCHIC'], hp: 106, atk: 154, def: 90, spd: 130, rate: 3, exp: 306, moves: ['PSYCHIC', 'SWIFT', 'BARRIER', 'RECOVER'] },
+});
 // [evolves into, at level]. Levels are lower than the originals so evolving takes a few sessions, not weeks.
 const EVO = {
   BULBASAUR: ['IVYSAUR', 12], IVYSAUR: ['VENUSAUR', 24],
@@ -366,6 +402,7 @@ const EVO = {
   RATTATA: ['RATICATE', 14],
   CATERPIE: ['METAPOD', 7], METAPOD: ['BUTTERFREE', 10],
   WEEDLE: ['KAKUNA', 7], KAKUNA: ['BEEDRILL', 10],
+  SPEAROW: ['FEAROW', 20], ZUBAT: ['GOLBAT', 22], PARAS: ['PARASECT', 24], ABRA: ['KADABRA', 16],
 };
 // Move learned on evolving into each species.
 const LEARN = {
@@ -373,6 +410,7 @@ const LEARN = {
   WARTORTLE: 'BITE', BLASTOISE: 'HYDRO PUMP', RAICHU: 'THUNDERBOLT', PIDGEOTTO: 'WING ATTACK',
   PIDGEOT: 'AGILITY', RATICATE: 'HYPER FANG', METAPOD: 'HARDEN', BUTTERFREE: 'CONFUSION',
   KAKUNA: 'HARDEN', BEEDRILL: 'TWINEEDLE',
+  FEAROW: 'DRILL PECK', GOLBAT: 'WING ATTACK', PARASECT: 'LEECH LIFE', KADABRA: 'CONFUSION',
 };
 // Upscalers used for Oak's intro portrait (Scale3x plus a soft inner shadow) and the trainer's
 // chunky battle back sprite (Scale2x).
@@ -793,11 +831,278 @@ const TRAINER_ART = (() => {
       ME(20, 21, 1.5, 2, 3), ME(28, 21, 1.5, 2, 3), MX(19, 20, 0), MX(27, 20, 0), ML(22, 26, 26, 26, 3)],
   };
 })();
-const TRAINER_BIG = { BLUE: sprite(rasterize(TRAINER_ART.BLUE, 48, 48)), BUG: sprite(rasterize(TRAINER_ART.BUG, 48, 48)) };
+// New Pokémon (version 6) and trainer portraits, in the same shape language as ART.
+const ART6 = (() => {
+const E = (cx, cy, rx, ry, c, o = {}) => ({ t: 'e', cx, cy, rx, ry, c, ...o });
+const P = (c, ...pts) => ({ t: 'p', c, pts: pts.flat() });
+const ME = (cx, cy, rx, ry, c, o = {}) => ({ t: 'e', cx, cy, rx, ry, c, mark: true, ...o });
+const MP = (c, ...pts) => ({ t: 'p', c, pts: pts.flat(), mark: true });
+const ML = (x1, y1, x2, y2, c) => ({ t: 'l', x1, y1, x2, y2, c, mark: true });
+const MX = (x, y, c) => ({ t: 'x', x, y, c, mark: true });
+const EYE = (x, y, rx = 2, ry = 2.5) => [ME(x, y, rx, ry, 3), MX(Math.round(x - rx / 2), Math.round(y - ry / 2), 0)];
+const EYEW = (x, y, rx = 2.5, ry = 2.5) => [ME(x, y, rx, ry, 0), ME(x - 0.5, y, rx * 0.5, ry * 0.8, 3)];
+// Points of an n-pointed star.
+const STAR = (cx, cy, R, r, n, rotDeg) => {
+  const pts = [];
+  for (let i = 0; i < n * 2; i++) {
+    const a = (rotDeg + i * 180 / n) * Math.PI / 180, rad = i % 2 ? r : R;
+    pts.push(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad);
+  }
+  return pts;
+};
+return {
+  SPEAROW: {
+    front: [
+      P(2, 34, 30, 46, 26, 45, 34, 47, 40, 35, 39),
+      ML(22, 42, 22, 46, 3), ML(28, 42, 28, 46, 3), ML(20, 46, 24, 46, 3), ML(26, 46, 30, 46, 3),
+      E(27, 32, 12, 10, 1), E(22, 35, 6, 6, 0, { n: true }), E(32, 30, 8, 8, 2, { rot: 0.5 }), ML(30, 25, 36, 35, 1),
+      P(2, 12, 13, 14, 3, 18, 9, 21, 1, 23, 9, 27, 5, 24, 13), E(17, 18, 9, 8, 1), P(1, 9, 16, 2, 19, 9, 22),
+      EYE(13, 17, 1.5, 2), ML(9, 13, 17, 16, 3)],
+    back: [
+      P(2, 10, 27, 16, 32, 22, 27), E(16, 20, 10, 9, 1), E(7, 19, 4, 7, 2, { rot: 0.3 }), E(25, 19, 4, 7, 2, { rot: -0.3 }),
+      ML(7, 14, 7, 24, 1), ML(25, 14, 25, 24, 1), P(2, 11, 7, 12, 0, 15, 5, 17, 0, 19, 5, 22, 1, 21, 7), E(16, 9, 7, 6, 1)],
+  },
+  FEAROW: {
+    front: [
+      P(2, 33, 32, 47, 27, 46, 36, 47, 45, 34, 40), ML(36, 34, 46, 30, 3), ML(36, 38, 46, 41, 3),
+      ML(26, 40, 26, 46, 3), ML(32, 40, 32, 46, 3), ML(24, 46, 28, 46, 3), ML(30, 46, 34, 46, 3),
+      E(30, 33, 11, 9, 1), E(35, 30, 8, 9, 2, { rot: 0.5 }), ML(33, 24, 39, 36, 1),
+      P(1, 21, 31, 17, 14, 24, 12, 29, 28), ME(22, 24, 3, 4, 0),
+      P(2, 20, 8, 25, 0, 27, 5, 32, 2, 29, 10), E(19, 12, 7, 6, 1), P(1, 14, 10, 0, 15, 14, 15),
+      EYE(17, 10, 1.5, 2), ML(14, 7, 21, 9, 3)],
+    back: [
+      E(16, 22, 10, 8, 1), E(6, 19, 4, 8, 2, { rot: 0.2 }), E(26, 19, 4, 8, 2, { rot: -0.2 }), ML(6, 12, 6, 25, 1), ML(26, 12, 26, 25, 1),
+      P(1, 13, 17, 14, 6, 18, 6, 19, 17), P(2, 13, 3, 16, 0, 19, 3), E(16, 6, 5, 4, 1)],
+  },
+  JIGGLYPUFF: {
+    front: [
+      E(17, 45, 4, 2, 0), E(31, 45, 4, 2, 0),
+      P(0, 10, 16, 9, 3, 19, 10), P(0, 38, 16, 39, 3, 29, 10), MP(2, 11, 6, 12, 12, 16, 10), MP(2, 37, 6, 36, 12, 32, 10),
+      E(24, 29, 16, 15, 0), E(9, 32, 3, 3, 0), E(39, 32, 3, 3, 0),
+      P(0, 21, 15, 19, 8, 25, 6, 29, 10, 25, 13), ML(23, 8, 26, 10, 1),
+      ME(17, 27, 4, 4.5, 0), ME(17, 28, 2.5, 3, 2), MX(16, 26, 0), ME(31, 27, 4, 4.5, 0), ME(31, 28, 2.5, 3, 2), MX(30, 26, 0),
+      ML(22, 36, 26, 36, 3)],
+    back: [E(10, 31, 3, 1.5, 0), E(22, 31, 3, 1.5, 0), P(0, 6, 11, 5, 1, 12, 7), P(0, 26, 11, 27, 1, 20, 7), E(16, 20, 13, 12, 0), P(0, 14, 9, 16, 3, 19, 8)],
+  },
+  MANKEY: {
+    front: [
+      P(0, 37, 38, 44, 31, 46, 25, 44, 24, 42, 30, 36, 35), E(16, 44, 5, 3, 1), E(32, 44, 5, 3, 1),
+      E(9, 30, 4, 6, 1), E(39, 30, 4, 6, 1), E(9, 18, 3, 3, 1), E(39, 18, 3, 3, 1),
+      E(24, 27, 15, 14, 0), P(0, 13, 17, 9, 11, 16, 14), P(0, 35, 17, 39, 11, 32, 14), P(0, 20, 13, 22, 7, 25, 12),
+      ME(24, 30, 4, 3, 1), MX(23, 30, 3), MX(25, 30, 3),
+      ML(15, 19, 21, 23, 3), ML(33, 19, 27, 23, 3), ME(19, 24, 1.5, 1.5, 3), ME(29, 24, 1.5, 1.5, 3), ML(20, 35, 28, 35, 3)],
+    back: [ML(26, 24, 31, 17, 3), E(10, 29, 3, 2, 1), E(22, 29, 3, 2, 1), E(5, 20, 3, 4, 1), E(27, 20, 3, 4, 1), E(5, 12, 2, 2, 1), E(27, 12, 2, 2, 1), E(16, 18, 12, 11, 0)],
+  },
+  SANDSHREW: {
+    front: [
+      P(1, 33, 40, 43, 38, 46, 31, 41, 36, 33, 37), E(17, 45, 5, 2, 1), E(30, 45, 5, 2, 1),
+      E(24, 34, 11, 11, 1), E(22, 36, 7, 8, 0, { n: true }), ML(30, 28, 35, 32, 2), ML(31, 34, 35, 38, 2),
+      E(13, 33, 3, 5, 1, { rot: -0.5 }), E(34, 32, 3, 5, 1, { rot: 0.5 }), MX(10, 37, 0), MX(12, 38, 0), MX(37, 36, 0), MX(35, 37, 0),
+      P(1, 13, 12, 10, 3, 18, 9), P(1, 28, 11, 31, 3, 24, 9), E(21, 18, 10, 9, 1),
+      EYE(17, 17, 1.5, 2.5), EYE(25, 17, 1.5, 2.5), MX(21, 21, 3), ML(18, 24, 24, 24, 3)],
+    back: [
+      P(1, 25, 26, 31, 23, 30, 28), E(9, 30, 3, 2, 1), E(23, 30, 3, 2, 1), E(16, 21, 11, 9, 1),
+      ML(7, 18, 25, 18, 2), ML(6, 22, 26, 22, 2), ML(8, 26, 24, 26, 2), P(1, 10, 6, 8, 0, 13, 4), P(1, 22, 6, 24, 0, 19, 4), E(16, 9, 7, 6, 1)],
+  },
+  ZUBAT: {
+    front: [
+      P(2, 21, 21, 2, 7, 6, 17, 0, 26, 8, 24, 10, 32, 20, 28), P(2, 27, 21, 46, 7, 42, 17, 47, 26, 40, 24, 38, 32, 28, 28),
+      ML(20, 22, 4, 9, 3), ML(28, 22, 44, 9, 3),
+      P(1, 20, 31, 15, 47, 23, 33), P(1, 28, 31, 33, 47, 25, 33),
+      P(1, 19, 17, 15, 5, 23, 15), P(1, 29, 17, 33, 5, 25, 15), E(24, 24, 7, 9, 1),
+      ME(24, 27, 4, 4, 3), ME(24, 29, 2, 2, 2), MX(22, 24, 0), MX(26, 24, 0)],
+    back: [
+      P(2, 14, 14, 0, 3, 3, 13, 0, 18, 6, 17, 7, 22, 14, 19), P(2, 18, 14, 32, 3, 29, 13, 32, 18, 26, 17, 25, 22, 18, 19),
+      P(1, 14, 21, 11, 31, 16, 22), P(1, 18, 21, 21, 31, 16, 22), P(1, 13, 11, 11, 3, 15, 10), P(1, 19, 11, 21, 3, 17, 10), E(16, 16, 5, 6, 1)],
+  },
+  GOLBAT: {
+    front: [
+      P(2, 14, 22, 1, 4, 4, 18, 0, 30, 7, 27, 9, 38, 16, 32), P(2, 34, 22, 47, 4, 44, 18, 48, 30, 41, 27, 39, 38, 32, 32),
+      ML(14, 22, 2, 6, 3), ML(34, 22, 46, 6, 3), E(19, 43, 3, 3, 1), E(29, 43, 3, 3, 1),
+      P(1, 17, 13, 14, 2, 22, 10), P(1, 31, 13, 34, 2, 26, 10), E(24, 27, 12, 15, 1),
+      ME(24, 30, 8, 9, 3), ME(24, 33, 6, 5, 2), ME(24, 36, 3, 2, 1),
+      MP(0, 18, 22, 20, 27, 22, 22), MP(0, 30, 22, 28, 27, 26, 22), ME(19, 16, 2, 1.5, 3), ME(29, 16, 2, 1.5, 3)],
+    back: [
+      P(2, 11, 15, 0, 2, 2, 14, 0, 22, 5, 20, 6, 27, 12, 22), P(2, 21, 15, 32, 2, 30, 14, 32, 22, 27, 20, 26, 27, 20, 22),
+      E(12, 28, 2, 2, 1), E(20, 28, 2, 2, 1), P(1, 11, 9, 9, 1, 14, 7), P(1, 21, 9, 23, 1, 18, 7), E(16, 18, 8, 10, 1)],
+  },
+  GEODUDE: {
+    front: [
+      E(9, 21, 6, 4, 1, { rot: 0.3 }), E(39, 21, 6, 4, 1, { rot: -0.3 }), E(5, 30, 5, 5, 1), E(43, 30, 5, 5, 1),
+      ML(3, 29, 7, 33, 2), ML(45, 29, 41, 33, 2),
+      E(24, 27, 13, 12, 1), ML(13, 22, 16, 26, 2), ML(31, 34, 35, 32, 2), ME(15, 19, 2, 1, 2), ME(33, 33, 2, 1, 2),
+      ML(16, 22, 22, 24, 3), ML(32, 22, 26, 24, 3), ME(19, 26, 1.5, 1.5, 3), ME(29, 26, 1.5, 1.5, 3), ML(20, 32, 28, 31, 3)],
+    back: [E(5, 15, 4, 3, 1), E(27, 15, 4, 3, 1), E(3, 22, 4, 4, 1), E(29, 22, 4, 4, 1), E(16, 18, 10, 9, 1), ML(12, 14, 15, 20, 2), ML(20, 21, 23, 25, 2)],
+  },
+  ONIX: {
+    front: [
+      E(39, 41, 7, 6, 1), E(29, 43, 7, 5, 1), E(18, 41, 7, 6, 1), E(11, 32, 6, 6, 1), E(15, 23, 7, 6, 1), E(24, 18, 7, 6, 1),
+      ML(36, 37, 40, 46, 2), ML(26, 39, 30, 47, 2), ML(15, 37, 19, 46, 2), ML(7, 30, 15, 33, 2), ML(12, 20, 19, 25, 2),
+      P(1, 36, 7, 46, 0, 40, 10), E(31, 12, 10, 7, 1), ML(26, 8, 34, 8, 2),
+      ME(28, 11, 2, 1.5, 3), ML(25, 9, 30, 10, 3), ML(22, 16, 31, 16, 3)],
+    back: [
+      E(25, 28, 6, 4, 1), E(17, 29, 6, 4, 1), E(9, 25, 5, 5, 1), E(9, 17, 5, 5, 1), E(15, 11, 6, 5, 1),
+      P(1, 25, 4, 31, 0, 27, 6), E(21, 7, 7, 5, 1), ML(16, 5, 25, 5, 2)],
+  },
+  CLEFAIRY: {
+    front: [
+      P(0, 11, 28, 2, 21, 8, 33), P(0, 37, 28, 46, 21, 40, 33), ML(10, 27, 4, 23, 1), ML(38, 27, 44, 23, 1),
+      E(17, 45, 5, 2, 0), E(31, 45, 5, 2, 0),
+      P(0, 14, 21, 10, 4, 21, 15), P(0, 34, 21, 38, 4, 27, 15), MP(2, 10, 4, 11, 9, 14, 7), MP(2, 38, 4, 37, 9, 34, 7),
+      E(24, 31, 13, 14, 0), E(12, 35, 3, 3, 0), E(36, 35, 3, 3, 0),
+      P(0, 22, 18, 20, 11, 26, 9, 28, 13, 24, 16), ML(23, 11, 26, 12, 1),
+      EYE(19, 27, 2, 3), EYE(29, 27, 2, 3), ME(14, 32, 2.5, 1.5, 1), ME(34, 32, 2.5, 1.5, 1), ML(22, 34, 26, 34, 3)],
+    back: [
+      P(0, 6, 18, 0, 13, 4, 23), P(0, 26, 18, 32, 13, 28, 23), E(10, 30, 3, 2, 0), E(22, 30, 3, 2, 0),
+      P(0, 9, 12, 7, 0, 13, 7), P(0, 23, 12, 25, 0, 19, 7), MP(2, 7, 0, 8, 4, 10, 2), MP(2, 25, 0, 24, 4, 22, 2), E(16, 19, 11, 11, 0), E(16, 28, 2, 2, 0)],
+  },
+  PARAS: {
+    front: [
+      ML(10, 40, 5, 46, 3), ML(17, 42, 15, 47, 3), ML(31, 42, 33, 47, 3), ML(38, 40, 43, 46, 3),
+      E(10, 33, 5, 3, 1), E(38, 33, 5, 3, 1), E(24, 36, 14, 9, 1),
+      E(16, 28, 3, 3, 1), E(32, 28, 3, 3, 1), E(16, 22, 8, 6, 2), E(32, 22, 8, 6, 2),
+      ME(13, 20, 2, 1.5, 0), ME(19, 23, 1.5, 1, 0), ME(30, 20, 2, 1.5, 0), ME(35, 23, 1.5, 1, 0),
+      ME(19, 37, 2, 2.5, 0), ME(19, 37, 1, 1.5, 3), ME(29, 37, 2, 2.5, 0), ME(29, 37, 1, 1.5, 3), ML(22, 42, 26, 42, 3)],
+    back: [ML(6, 26, 2, 31, 3), ML(26, 26, 30, 31, 3), E(16, 23, 11, 7, 1), E(10, 14, 6, 5, 2), E(22, 14, 6, 5, 2), ME(8, 13, 1.5, 1, 0), ME(24, 13, 1.5, 1, 0)],
+  },
+  PARASECT: {
+    front: [
+      ML(11, 41, 6, 47, 3), ML(18, 43, 16, 47, 3), ML(30, 43, 32, 47, 3), ML(37, 41, 42, 47, 3),
+      E(8, 37, 5, 4, 1), E(40, 37, 5, 4, 1), E(24, 39, 12, 7, 1),
+      E(24, 20, 23, 15, 2), ME(24, 32, 18, 2, 1),
+      ME(13, 16, 3, 2, 0), ME(27, 11, 3, 2, 0), ME(37, 21, 3, 2, 0), ME(20, 25, 2, 1.5, 0), ME(32, 28, 2, 1.5, 0),
+      ME(18, 39, 2.5, 2, 0), ME(30, 39, 2.5, 2, 0)],
+    back: [ML(7, 27, 3, 31, 3), ML(25, 27, 29, 31, 3), E(16, 25, 9, 5, 1), E(16, 13, 15, 10, 2), ME(9, 10, 2, 1.5, 0), ME(20, 7, 2, 1.5, 0), ME(24, 15, 2, 1.5, 0)],
+  },
+  ODDISH: {
+    front: [
+      P(2, 23, 19, 5, 3, 12, 15), P(2, 25, 19, 43, 3, 36, 15), P(2, 24, 19, 17, 1, 31, 1),
+      ML(22, 18, 9, 7, 1), ML(26, 18, 39, 7, 1), ML(24, 18, 24, 4, 1),
+      E(17, 45, 5, 2, 1), E(31, 45, 5, 2, 1), E(24, 33, 13, 12, 1),
+      ME(19, 32, 2, 2.5, 3), ME(29, 32, 2, 2.5, 3), MX(18, 31, 0), MX(28, 31, 0), ML(22, 38, 26, 38, 3)],
+    back: [
+      P(2, 16, 13, 2, 2, 7, 11), P(2, 16, 13, 30, 2, 25, 11), P(2, 16, 13, 12, 0, 20, 0),
+      ML(15, 12, 5, 4, 1), ML(17, 12, 27, 4, 1), E(10, 30, 3, 2, 1), E(22, 30, 3, 2, 1), E(16, 22, 10, 9, 1)],
+  },
+  ABRA: {
+    front: [
+      P(1, 33, 41, 45, 38, 46, 46, 34, 46), E(16, 44, 6, 3, 1), E(30, 44, 6, 3, 1),
+      E(24, 35, 9, 10, 1), P(2, 15, 27, 33, 27, 31, 35, 17, 35), E(13, 35, 3, 6, 1), E(35, 35, 3, 6, 1),
+      P(1, 15, 13, 12, 1, 20, 9), P(1, 33, 13, 36, 1, 28, 9), E(24, 18, 10, 9, 1), E(24, 23, 4, 3, 1),
+      ML(17, 18, 21, 19, 3), ML(27, 19, 31, 18, 3), MX(23, 23, 3), MX(25, 23, 3)],
+    back: [
+      P(1, 22, 26, 30, 24, 31, 30, 23, 30), E(10, 29, 4, 2, 1), E(22, 29, 4, 2, 1), E(16, 22, 8, 8, 1), ML(9, 17, 23, 17, 2),
+      P(1, 10, 7, 8, 0, 13, 5), P(1, 22, 7, 24, 0, 19, 5), E(16, 10, 7, 6, 1)],
+  },
+  KADABRA: {
+    front: [
+      P(1, 33, 41, 45, 37, 46, 46, 34, 46), E(16, 44, 6, 3, 1), E(30, 44, 6, 3, 1),
+      E(24, 34, 9, 10, 1), P(2, 15, 26, 33, 26, 31, 34, 17, 34), E(13, 34, 3, 7, 1), E(35, 32, 3, 7, 1, { rot: -0.3 }),
+      ML(40, 17, 39, 34, 3), ME(40, 15, 2.5, 3.5, 0),
+      P(1, 15, 11, 12, 0, 20, 8), P(1, 33, 11, 36, 0, 28, 8), E(24, 17, 10, 9, 1), E(24, 22, 4, 3, 1),
+      MP(3, 24, 9, 25, 11, 27, 11, 25, 12, 26, 14, 24, 13, 22, 14, 23, 12, 21, 11, 23, 11),
+      EYE(19, 17, 1.5, 2), EYE(29, 17, 1.5, 2), ML(16, 15, 21, 16, 3), ML(32, 15, 27, 16, 3),
+      ML(19, 24, 10, 30, 3), ML(29, 24, 38, 30, 3)],
+    back: [
+      P(1, 22, 26, 30, 23, 31, 30, 23, 30), E(10, 29, 4, 2, 1), E(22, 29, 4, 2, 1), E(16, 21, 8, 8, 1), ML(9, 16, 23, 16, 2),
+      ML(27, 8, 27, 18, 3), ME(27, 7, 2, 2.5, 0), P(1, 10, 6, 8, 0, 13, 4), P(1, 22, 6, 24, 0, 19, 4), E(16, 9, 7, 6, 1)],
+  },
+  PSYDUCK: {
+    front: [
+      E(16, 45, 6, 2, 1), E(32, 45, 6, 2, 1), E(24, 35, 12, 10, 1),
+      E(11, 21, 3, 7, 1, { rot: -0.3 }), E(37, 21, 3, 7, 1, { rot: 0.3 }), E(24, 17, 12, 10, 1),
+      E(24, 24, 7, 3, 0), ML(18, 24, 30, 24, 2),
+      ME(19, 17, 3, 3, 0), MX(19, 17, 3), ME(29, 17, 3, 3, 0), MX(29, 17, 3),
+      ML(22, 7, 21, 2, 3), ML(24, 7, 24, 1, 3), ML(26, 7, 27, 2, 3)],
+    back: [E(10, 30, 4, 2, 1), E(22, 30, 4, 2, 1), E(16, 22, 9, 8, 1), E(6, 9, 2, 5, 1), E(26, 9, 2, 5, 1), E(16, 10, 9, 7, 1), ML(15, 3, 14, 0, 3), ML(17, 3, 18, 0, 3)],
+  },
+  STARYU: {
+    front: [P(1, STAR(24, 26, 22, 9, 5, -90)), ME(24, 26, 5, 5, 2), ME(24, 26, 3.5, 3.5, 0), MX(23, 25, 1)],
+    back: [P(1, STAR(16, 17, 15, 6, 5, -90)), ME(16, 17, 2, 2, 2)],
+  },
+  STARMIE: {
+    front: [P(2, STAR(24, 24, 23, 9, 5, -54)), P(1, STAR(24, 24, 19, 8, 5, -90)), ME(24, 24, 6, 6, 2), ME(24, 24, 4, 4, 0), MX(23, 23, 1)],
+    back: [P(2, STAR(16, 16, 16, 6, 5, -54)), P(1, STAR(16, 16, 13, 5, 5, -90)), ME(16, 16, 2.5, 2.5, 2)],
+  },
+  MEW: {
+    front: [
+      P(0, 29, 38, 35, 31, 39, 19, 41, 10, 44, 7, 46, 11, 43, 20, 40, 32, 33, 40), E(45, 8, 3, 4, 0),
+      E(18, 46, 3, 1.5, 0), E(27, 46, 3, 1.5, 0), E(19, 42, 3, 4, 0), E(27, 42, 3, 4, 0), E(23, 35, 6, 7, 0),
+      E(16, 33, 2, 3, 0, { rot: 0.4 }), E(30, 33, 2, 3, 0, { rot: -0.4 }),
+      P(0, 15, 18, 12, 7, 21, 13), P(0, 31, 18, 34, 7, 25, 13), E(23, 22, 10, 9, 0),
+      ME(19, 22, 2.5, 3.5, 3), MX(18, 20, 0), ME(27, 22, 2.5, 3.5, 3), MX(26, 20, 0), MX(23, 27, 3), MX(22, 28, 3), MX(24, 28, 3)],
+    back: [
+      P(0, 18, 26, 24, 20, 27, 10, 29, 6, 31, 9, 28, 18, 21, 27), E(29, 5, 2, 3, 0),
+      E(11, 30, 2, 1, 0), E(17, 30, 2, 1, 0), E(14, 23, 5, 6, 0), P(0, 8, 10, 6, 2, 12, 7), P(0, 20, 10, 22, 2, 16, 7), E(14, 13, 8, 7, 0)],
+  },
+  MEWTWO: {
+    front: [
+      P(1, 30, 40, 38, 45, 45, 41, 47, 33, 44, 31, 43, 37, 38, 40, 33, 36), E(45, 31, 3, 4, 2),
+      E(17, 46, 5, 2, 1), E(31, 46, 5, 2, 1), E(18, 38, 5, 7, 1), E(30, 38, 5, 7, 1),
+      E(24, 27, 7, 10, 1), E(24, 31, 5, 5, 2, { n: true }),
+      E(15, 21, 4, 4, 1), E(33, 21, 4, 4, 1), E(11, 28, 2.5, 6, 1, { rot: 0.2 }), E(37, 28, 2.5, 6, 1, { rot: -0.2 }),
+      E(10, 35, 3, 2, 1), E(38, 35, 3, 2, 1),
+      P(1, 17, 8, 15, 0, 22, 5), P(1, 31, 8, 33, 0, 26, 5), E(24, 11, 7, 7, 1), ML(29, 13, 29, 20, 3),
+      ME(21, 11, 1.5, 1.5, 3), ME(27, 11, 1.5, 1.5, 3), ML(18, 8, 22, 10, 3), ML(30, 8, 26, 10, 3), ML(22, 15, 26, 15, 3)],
+    back: [
+      P(1, 18, 26, 25, 30, 31, 25, 32, 18, 29, 18, 28, 24, 22, 27, 18, 23), E(30, 17, 2, 3, 2),
+      E(11, 26, 4, 5, 1), E(21, 26, 4, 5, 1), E(16, 18, 6, 8, 1), E(9, 13, 3, 3, 1), E(23, 13, 3, 3, 1),
+      E(6, 18, 2, 4, 1), E(26, 18, 2, 4, 1), P(1, 12, 5, 10, 0, 15, 3), P(1, 20, 5, 22, 0, 17, 3), E(16, 7, 5, 5, 1), ML(16, 11, 16, 13, 3)],
+  },
+};
+})();
+const TRAINER_ART6 = (() => {
+  const E = (cx, cy, rx, ry, c, o = {}) => ({ t: 'e', cx, cy, rx, ry, c, ...o });
+  const P = (c, ...pts) => ({ t: 'p', c, pts });
+  const ME = (cx, cy, rx, ry, c) => ({ t: 'e', cx, cy, rx, ry, c, mark: true });
+  const ML = (x1, y1, x2, y2, c) => ({ t: 'l', x1, y1, x2, y2, c, mark: true });
+  const MX = (x, y, c) => ({ t: 'x', x, y, c, mark: true });
+  const eyes = (y = 21) => [ME(20, y, 1.5, 2, 3), ME(28, y, 1.5, 2, 3), MX(20, y - 1, 0), MX(28, y - 1, 0)];
+  return {
+    BROCK: [
+      P(2, 8, 47, 12, 33, 36, 33, 40, 47), ML(24, 34, 24, 47, 1), E(10, 41, 4, 7, 1), E(38, 41, 4, 7, 1),
+      E(24, 21, 9, 10, 1),
+      P(2, 13, 19, 11, 8, 16, 10, 18, 3, 22, 8, 26, 2, 29, 8, 33, 4, 34, 11, 37, 18, 33, 14, 26, 12, 18, 14),
+      ML(18, 21, 22, 21, 3), ML(26, 21, 30, 21, 3), ML(21, 28, 27, 28, 3)],
+    MISTY: [
+      P(1, 10, 47, 13, 33, 35, 33, 38, 47), ML(18, 34, 18, 47, 3), ML(30, 34, 30, 47, 3), E(11, 41, 3, 6, 0), E(37, 41, 3, 6, 0),
+      E(24, 17, 12, 11, 2), P(2, 33, 9, 44, 4, 46, 15, 38, 17), E(24, 22, 8, 9, 0),
+      P(2, 15, 19, 17, 10, 30, 9, 33, 18, 28, 14, 20, 14), ME(36, 10, 1.5, 1.5, 3),
+      ...eyes(22), ML(22, 28, 26, 28, 3)],
+    ROCKET: [
+      P(2, 8, 47, 12, 33, 36, 33, 40, 47), E(10, 41, 4, 7, 2), E(38, 41, 4, 7, 2),
+      ML(21, 37, 21, 45, 0), ML(21, 37, 25, 37, 0), ML(26, 38, 26, 40, 0), ML(25, 41, 21, 41, 0), ML(23, 41, 27, 45, 0),
+      E(24, 22, 8, 9, 0), E(24, 13, 10, 5, 2), P(2, 13, 15, 36, 15, 38, 19, 11, 19),
+      ...eyes(23), ML(18, 20, 22, 21, 3), ML(30, 20, 26, 21, 3), ML(22, 29, 26, 29, 3)],
+    YOUNG: [
+      P(1, 10, 47, 13, 33, 35, 33, 38, 47), E(11, 41, 3, 6, 0), E(37, 41, 3, 6, 0),
+      E(24, 22, 8, 9, 0), E(24, 14, 9, 5, 2), P(2, 24, 15, 40, 15, 39, 18, 24, 18),
+      ...eyes(23), ML(21, 29, 27, 29, 3)],
+    LASS: [
+      P(1, 9, 47, 15, 32, 33, 32, 39, 47), E(12, 40, 3, 6, 0), E(36, 40, 3, 6, 0),
+      E(24, 23, 12, 14, 2), E(24, 21, 8, 9, 0), P(2, 15, 19, 17, 11, 31, 11, 33, 19, 28, 15, 20, 15),
+      E(33, 9, 4, 3, 1), E(38, 11, 3, 3, 1), ...eyes(22), ML(22, 28, 26, 28, 3)],
+    HIKER: [
+      P(1, 4, 47, 8, 32, 40, 32, 44, 47), E(7, 41, 5, 7, 1), E(41, 41, 5, 7, 1), ML(24, 33, 24, 47, 2),
+      E(24, 23, 10, 10, 0), E(24, 30, 9, 5, 2), E(24, 13, 15, 3, 2), E(24, 10, 9, 5, 2),
+      ...eyes(21), ML(18, 18, 22, 18, 3), ML(26, 18, 30, 18, 3)],
+  };
+})();
+Object.assign(ART, ART6);
+Object.assign(TRAINER_ART, TRAINER_ART6);
+const TRAINER_BIG = {};
+for (const k in TRAINER_ART) TRAINER_BIG[k] = sprite(rasterize(TRAINER_ART[k], 48, 48));
+// Shrink a shape list (for 16x16 party icons of Pokémon drawn only at full size).
+function scaleShapes(shapes, k) {
+  return shapes.flat().map(sh => sh.t === 'e' ? { ...sh, cx: sh.cx * k, cy: sh.cy * k, rx: Math.max(0.7, sh.rx * k), ry: Math.max(0.7, sh.ry * k) }
+    : sh.t === 'p' ? { ...sh, pts: sh.pts.map(v => v * k) }
+    : sh.t === 'l' ? { ...sh, x1: sh.x1 * k, y1: sh.y1 * k, x2: sh.x2 * k, y2: sh.y2 * k }
+    : { ...sh, x: Math.round(sh.x * k), y: Math.round(sh.y * k) });
+}
 // 16x16 icons for the party list; full-size fronts and backs for battles and big screens.
 const MON_IMG = {}, MON_BIG = {}, MON_BACK = {};
 for (const k in SPECIES) {
-  MON_IMG[k] = sprite(SPECIES[k].art);
+  MON_IMG[k] = sprite(SPECIES[k].art || rasterize(scaleShapes(ART[k].front, 1 / 3), 16, 16));
   MON_BIG[k] = sprite(rasterize(ART[k].front, 48, 48));
   MON_BACK[k] = sprite(rasterize(ART[k].back, 32, 32));
 }
@@ -805,6 +1110,10 @@ const STARTERS = ['BULBASAUR', 'CHARMANDER', 'SQUIRTLE', 'PIKACHU'];
 const WILD = {
   town: [['PIDGEY', 34, 2, 5], ['RATTATA', 34, 2, 4], ['CATERPIE', 15, 3, 5], ['WEEDLE', 14, 3, 5], ['PIKACHU', 3, 3, 5]],
   forest: [['CATERPIE', 28, 3, 5], ['WEEDLE', 28, 3, 5], ['METAPOD', 15, 4, 6], ['KAKUNA', 15, 4, 6], ['PIKACHU', 14, 3, 5]],
+  route3: [['SPEAROW', 35, 6, 8], ['JIGGLYPUFF', 15, 5, 7], ['MANKEY', 20, 6, 8], ['SANDSHREW', 20, 6, 8], ['RATTATA', 10, 6, 8]],
+  mtmoon: [['ZUBAT', 45, 8, 11], ['GEODUDE', 25, 8, 10], ['PARAS', 20, 8, 10], ['CLEFAIRY', 10, 8, 10]],
+  cerulean: [['ODDISH', 30, 12, 14], ['ABRA', 20, 10, 12], ['PSYDUCK', 20, 12, 14], ['PIDGEOTTO', 15, 13, 15], ['SPEAROW', 15, 12, 14]],
+  ccave: [['GOLBAT', 30, 35, 40], ['KADABRA', 25, 35, 38], ['PARASECT', 25, 35, 38], ['ONIX', 10, 36, 40], ['CLEFAIRY', 10, 34, 38]],
 };
 
 const MOVES = {
@@ -839,6 +1148,17 @@ const MOVES = {
   'SLEEP POWDER': { type: 'GRASS', acc: 75, inflict: 'SLP' },
   'STUN SPORE': { type: 'GRASS', acc: 75, inflict: 'PAR' },
   'STRUGGLE': { type: 'NORMAL', pow: 50, acc: 100, recoil: true },
+  'PECK': { type: 'FLYING', pow: 35, acc: 100 }, 'DRILL PECK': { type: 'FLYING', pow: 80, acc: 100 },
+  'LEER': { type: 'NORMAL', stat: 'def', acc: 100 }, 'SCREECH': { type: 'NORMAL', stat: 'def', amt: 2, acc: 85 },
+  'SING': { type: 'NORMAL', acc: 55, inflict: 'SLP' }, 'SUPERSONIC': { type: 'NORMAL', acc: 55, inflict: 'CONF' },
+  'POUND': { type: 'NORMAL', pow: 40, acc: 100 }, 'MEGA PUNCH': { type: 'NORMAL', pow: 80, acc: 85 },
+  'KARATE CHOP': { type: 'FIGHTING', pow: 50, acc: 100 }, 'ROCK THROW': { type: 'ROCK', pow: 50, acc: 90 },
+  'LEECH LIFE': { type: 'BUG', pow: 20, acc: 100, drain: true }, 'ABSORB': { type: 'GRASS', pow: 20, acc: 100, drain: true },
+  'MEGA DRAIN': { type: 'GRASS', pow: 40, acc: 100, drain: true },
+  'DEFENSE CURL': { type: 'NORMAL', self: 'def', amt: 1 }, 'BARRIER': { type: 'PSYCHIC', self: 'def', amt: 2 },
+  'TELEPORT': { type: 'PSYCHIC', teleport: true }, 'RECOVER': { type: 'NORMAL', heal: true },
+  'PSYCHIC': { type: 'PSYCHIC', pow: 90, acc: 100 }, 'SWIFT': { type: 'NORMAL', pow: 60, acc: 100, sure: true },
+  'BUBBLEBEAM': { type: 'WATER', pow: 65, acc: 100 },
 };
 // Uses per move before a rest. Struggle is used automatically when every move is out of PP.
 const PP = {
@@ -847,6 +1167,9 @@ const PP = {
   'PETAL DANCE': 20, 'SLASH': 20, 'FLAMETHROWER': 15, 'BITE': 25, 'HYDRO PUMP': 5, 'THUNDERBOLT': 15, 'WING ATTACK': 35,
   'HYPER FANG': 15, 'CONFUSION': 25, 'TWINEEDLE': 20, 'HARDEN': 30, 'AGILITY': 30, 'THUNDER WAVE': 20, 'POISONPOWDER': 35,
   'SLEEP POWDER': 15, 'STUN SPORE': 30, 'STRUGGLE': 99,
+  'PECK': 35, 'DRILL PECK': 20, 'LEER': 30, 'SCREECH': 40, 'SING': 15, 'SUPERSONIC': 20, 'POUND': 35, 'MEGA PUNCH': 20,
+  'KARATE CHOP': 25, 'ROCK THROW': 15, 'LEECH LIFE': 15, 'ABSORB': 20, 'MEGA DRAIN': 10, 'DEFENSE CURL': 40, 'BARRIER': 30,
+  'TELEPORT': 20, 'RECOVER': 20, 'PSYCHIC': 10, 'SWIFT': 20, 'BUBBLEBEAM': 20,
 };
 for (const k in MOVES) MOVES[k].pp = PP[k];
 // Chance of a side effect after a hit: status (PSN, PAR, BRN) or confusion.
@@ -861,6 +1184,9 @@ const LEVEL_LEARN = {
   PIDGEY: { 9: 'QUICK ATTACK' }, PIDGEOTTO: { 9: 'QUICK ATTACK' },
   BUTTERFREE: { 12: 'STUN SPORE', 14: 'SLEEP POWDER' },
   CHARMANDER: { 10: 'SCRATCH' }, SQUIRTLE: { 10: 'BITE' }, CHARMELEON: { 16: 'FLAMETHROWER' }, WARTORTLE: { 16: 'BITE' },
+  SANDSHREW: { 10: 'SLASH' }, GEODUDE: { 11: 'ROCK THROW' }, ODDISH: { 15: 'MEGA DRAIN' }, PSYDUCK: { 15: 'CONFUSION' },
+  ZUBAT: { 15: 'BITE' }, CLEFAIRY: { 13: 'DEFENSE CURL' }, PARAS: { 13: 'LEECH LIFE' }, STARYU: { 17: 'SWIFT' },
+  SPEAROW: { 15: 'QUICK ATTACK' }, JIGGLYPUFF: { 14: 'DEFENSE CURL' }, KADABRA: { 27: 'PSYCHIC' },
 };
 const STATUS_TEXT = { PSN: 'was poisoned!', PAR: 'is paralyzed! It may not attack!', BRN: 'was burned!', SLP: 'fell asleep!' };
 const STATUS_IMMUNE = { PSN: 'POISON', BRN: 'FIRE', PAR: 'ELECTRIC' };
@@ -869,16 +1195,17 @@ const STATUS_IMMUNE = { PSN: 'POISON', BRN: 'FIRE', PAR: 'ELECTRIC' };
 // Items, the Mart's stock, and the Pokédex
 // ---------------------------------------------------------------------------
 const ITEMS = {
-  'POKé BALL': { price: 200, ball: 1 }, 'GREAT BALL': { price: 600, ball: 1.5 },
+  'POKé BALL': { price: 200, ball: 1 }, 'GREAT BALL': { price: 600, ball: 1.5 }, 'ULTRA BALL': { price: 1200, ball: 2 },
+  'MASTER BALL': { price: 0, ball: 255 }, 'RARE CANDY': { price: 0, candy: true },
   'POTION': { price: 300, heal: 20 }, 'SUPER POTION': { price: 700, heal: 50 },
   'ANTIDOTE': { price: 100, cure: 'PSN' }, 'PARLYZ HEAL': { price: 200, cure: 'PAR' },
   'AWAKENING': { price: 250, cure: 'SLP' }, 'BURN HEAL': { price: 250, cure: 'BRN' },
 };
-const MART = Object.keys(ITEMS);
+const MART = ['POKé BALL', 'GREAT BALL', 'ULTRA BALL', 'POTION', 'SUPER POTION', 'ANTIDOTE', 'PARLYZ HEAL', 'AWAKENING', 'BURN HEAL'];
 const itemCount = n => G.bag[n] || 0;
 const addItem = (n, k = 1) => { G.bag[n] = itemCount(n) + k; };
 const takeItem = (n, k = 1) => { G.bag[n] = itemCount(n) - k; if (G.bag[n] <= 0) delete G.bag[n]; };
-const bagList = () => MART.filter(n => itemCount(n) > 0);
+const bagList = () => Object.keys(ITEMS).filter(n => itemCount(n) > 0);
 // [number, kind, height m, weight kg, entry]
 const DEX = {
   BULBASAUR: [1, 'SEED', 0.7, 6.9, 'It carries a plant bulb on its back from birth. The bulb soaks up sunlight to grow.'],
@@ -903,21 +1230,44 @@ const DEX = {
   RATICATE: [20, 'MOUSE', 0.7, 18.5, 'It uses its whiskers to keep its balance and its big fangs to gnaw.'],
   PIKACHU: [25, 'MOUSE', 0.4, 6.0, 'It stores electricity in its cheeks. Groups of them can cause storms.'],
   RAICHU: [26, 'MOUSE', 0.8, 30.0, 'Its long tail grounds it while it builds up a powerful electric charge.'],
+  SPEAROW: [21, 'TINY BIRD', 0.3, 2.0, 'It flaps its short wings fast to stay in the air. It is quick to pick fights.'],
+  FEAROW: [22, 'BEAK', 1.2, 38.0, 'Its huge wings let it fly all day without landing. Its long beak spears prey.'],
+  SANDSHREW: [27, 'MOUSE', 0.6, 12.0, 'It curls into a tight ball to guard itself. It burrows in dry, sandy places.'],
+  CLEFAIRY: [35, 'FAIRY', 0.6, 7.5, 'Rarely seen. Groups of them are said to dance in the moonlight on MT. MOON.'],
+  JIGGLYPUFF: [39, 'BALLOON', 0.5, 5.5, 'It stares with its round eyes and sings a lullaby that puts anyone to sleep.'],
+  ZUBAT: [41, 'BAT', 0.8, 7.5, 'It has no eyes. It finds its way in dark caves by sending out sound waves.'],
+  GOLBAT: [42, 'BAT', 1.6, 55.0, 'It drains the energy of its prey with its sharp fangs. It hunts at night.'],
+  ODDISH: [43, 'WEED', 0.5, 5.4, 'It buries itself in soil during the day and walks around at night.'],
+  PARAS: [46, 'MUSHROOM', 0.3, 5.4, 'The mushrooms on its back grow by drawing nutrients from the bug.'],
+  PARASECT: [47, 'MUSHROOM', 1.0, 29.5, 'The big mushroom on its back has taken over the bug. It scatters spores.'],
+  PSYDUCK: [54, 'DUCK', 0.8, 19.6, 'It always has a headache. When the pain grows, strange powers awaken.'],
+  MANKEY: [56, 'PIG MONKEY', 0.5, 28.0, 'It gets angry at the slightest thing. It lives in groups in the treetops.'],
+  ABRA: [63, 'PSI', 0.9, 19.5, 'It sleeps 18 hours a day. Even asleep, it can teleport away from danger.'],
+  KADABRA: [64, 'PSI', 1.3, 56.5, 'It holds a silver spoon that boosts its psychic powers. Its brain waves cause headaches.'],
+  GEODUDE: [74, 'ROCK', 0.4, 20.0, 'Often mistaken for an ordinary rock on mountain paths. It hurts to step on one.'],
+  ONIX: [95, 'ROCK SNAKE', 8.8, 210.0, 'It tunnels underground at high speed, leaving behind long caves as it goes.'],
+  STARYU: [120, 'STAR SHAPE', 0.8, 34.5, 'Its red core glows at night. It can regrow its arms if they are lost.'],
+  STARMIE: [121, 'MYSTERIOUS', 1.1, 80.0, 'Its core shines in seven colors. Some say it sends signals into space.'],
+  MEWTWO: [150, 'GENETIC', 2.0, 122.0, 'Created by scientists from the genes of MEW. Its power far exceeds its makers\' control.'],
+  MEW: [151, 'NEW SPECIES', 0.4, 4.0, 'So rare that many experts believe it is a myth. It is said to know every move.'],
 };
 const DEX_ORDER = Object.keys(DEX).sort((a, b) => DEX[a][0] - DEX[b][0]);
 function see(name) { G.dex.seen[name] = 1; }
 function own(name) { G.dex.seen[name] = 1; G.dex.own[name] = 1; }
 const STAT_NAME = { atk: 'ATTACK', def: 'DEFENSE', spd: 'SPEED', acc: 'accuracy' };
 const EFFECT = {
-  FIRE: { GRASS: 2, BUG: 2, WATER: .5, FIRE: .5 },
-  WATER: { FIRE: 2, WATER: .5, GRASS: .5 },
-  GRASS: { WATER: 2, FIRE: .5, GRASS: .5, FLYING: .5, BUG: .5, POISON: .5 },
-  ELECTRIC: { WATER: 2, FLYING: 2, GRASS: .5, ELECTRIC: .5 },
-  FLYING: { GRASS: 2, BUG: 2, ELECTRIC: .5 },
-  BUG: { GRASS: 2, POISON: 2, FIRE: .5, FLYING: .5 },
-  POISON: { GRASS: 2, BUG: 2, POISON: .5 },
-  PSYCHIC: { POISON: 2, PSYCHIC: .5 },
-  NORMAL: {},
+  FIRE: { GRASS: 2, BUG: 2, WATER: .5, FIRE: .5, ROCK: .5 },
+  WATER: { FIRE: 2, ROCK: 2, GROUND: 2, WATER: .5, GRASS: .5 },
+  GRASS: { WATER: 2, ROCK: 2, GROUND: 2, FIRE: .5, GRASS: .5, FLYING: .5, BUG: .5, POISON: .5 },
+  ELECTRIC: { WATER: 2, FLYING: 2, GRASS: .5, ELECTRIC: .5, GROUND: 0 },
+  FLYING: { GRASS: 2, BUG: 2, FIGHTING: 2, ELECTRIC: .5, ROCK: .5 },
+  BUG: { GRASS: 2, POISON: 2, PSYCHIC: 2, FIRE: .5, FLYING: .5, FIGHTING: .5 },
+  POISON: { GRASS: 2, BUG: 2, POISON: .5, GROUND: .5, ROCK: .5 },
+  PSYCHIC: { POISON: 2, FIGHTING: 2, PSYCHIC: .5 },
+  NORMAL: { ROCK: .5 },
+  ROCK: { FIRE: 2, FLYING: 2, BUG: 2, FIGHTING: .5, GROUND: .5 },
+  GROUND: { FIRE: 2, ELECTRIC: 2, ROCK: 2, POISON: 2, GRASS: .5, BUG: .5, FLYING: 0 },
+  FIGHTING: { NORMAL: 2, ROCK: 2, FLYING: .5, POISON: .5, BUG: .5, PSYCHIC: .5 },
 };
 const typeMul = (atk, defTypes) => defTypes.reduce((m, t) => m * (EFFECT[atk][t] ?? 1), 1);
 
@@ -1010,7 +1360,7 @@ const MAPS = {
     'TTTTTTTT,,,,TTTTTTTT'], edge: 'T', north: 'forest', south: 'town',
     warps: { '15,5': ['center', 4, 6, 'up'], '5,10': ['mart', 4, 6, 'up'] } },
   forest: { rows: [
-    'TTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTT....TTTTTTTT',
     'TTTTTTTT.S..TTTTTTTT',
     'TTTTTTTT....TTTTTTTT',
     'TTGGGGG.....GGGGGGTT',
@@ -1029,7 +1379,7 @@ const MAPS = {
     'TT.......TTTT.GG..TT',
     'TTTTTTT..TTTT.....TT',
     'TTTTTTT.....TTTTTTTT',
-    'TTTTTTTT,,,,TTTTTTTT'], edge: 'T', south: 'viridian' },
+    'TTTTTTTT,,,,TTTTTTTT'], edge: 'T', south: 'viridian', north: 'pewter' },
   center: { rows: [
     'XXXXXXXXXX',
     'XBB___C_BX',
@@ -1048,7 +1398,129 @@ const MAPS = {
     'X____BB__X',
     'X________X',
     'XXXXEEXXXX'], edge: 'X', warps: { '4,7': ['viridian', 5, 11, 'down'], '5,7': ['viridian', 5, 11, 'down'] } },
+  pewter: { rows: [
+    'TTTTTTTTTTTTTTTTTTTT',
+    'TT......,,,,......TT',
+    'TT.RRRRRR,,,.cccc.TT',
+    'TT.RRRRRR,,,.cccc.TT',
+    'TT.lllDll,,,.lQDl.TT',
+    'TT.S..,..,,,...,..TT',
+    'TT...,,,,,,,,,,,,,,,',
+    'TT......,,,,......,,',
+    'TT.rrrr.,,,,.mmmm.TT',
+    'TT.rrrr.,,,,.mmmm.TT',
+    'TT.hdnh.,,,,.lMDl.TT',
+    'TT..,...,,,,...,..TT',
+    'TT..,,,,,,,,,,,,..TT',
+    'TT.S....,,,,..ff..TT',
+    'TT.ff...,,,,......TT',
+    'TT......,,,,..S...TT',
+    'TT......,,,,......TT',
+    'TTTTTTTT,,,,TTTTTTTT'], edge: 'T', south: 'forest', east: 'route3',
+    warps: { '6,4': ['gym1', 4, 8, 'up'], '15,4': ['center_pewter', 4, 6, 'up'], '15,10': ['mart_pewter', 4, 6, 'up'] } },
+  route3: { rows: [
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+    'TTTTTTTTTTTTTTTTTTTTTVVVVVVVVT',
+    'TT....GGGGG....GGGGG.VVVYVVVVT',
+    'TT....GGGGG....GGGGG...,,,,.TT',
+    'TT....GGGGG..TT.......,,,,..TT',
+    'TT..............GGGG.,,.....TT',
+    ',,,,,,,,,,,,,,,,,,,,,,,.....TT',
+    ',,,,,,,,,,,,,,,,,,,,,,......TT',
+    'TT...GGGGGG....TT..GGGGG....TT',
+    'TT...GGGGGG..........GGGG.S.TT',
+    'TT..........................TT',
+    'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'], edge: 'T', west: 'pewter', warps: { '24,2': ['mtmoon', 1, 13, 'up'] } },
+  mtmoon: { rows: [
+    'VVVVVVVVVVVVVVVVVVVVVVVV',
+    'VvvvvvvvVVVvvvvvvvvvvYvV',
+    'VvVVvvvvVVVvvVVVVVvvvvvV',
+    'VvVVvvVvvvvvvVVVVVvvVVvV',
+    'VvvvvvVvvvVVvvvvvvvvVVvV',
+    'VVVVvvVVvvVVvvVVVVvvvvvV',
+    'VvvvvvvVvvvvvvVVVVVVvVVV',
+    'VvVVVVvVVVVVvvvvvvvvvvvV',
+    'VvVvvvvvvvvVVVVVVVvVVVvV',
+    'VvVvVVVVVVvvvvvvvVvVvvvV',
+    'VvvvvvvvvVVVVVVvvVvVvVVV',
+    'VVVVVVVVvvvvvvVvvvvvvvvV',
+    'VvvvvvvVVVVVVvVVVVVVVVvV',
+    'VvVVVVvvvvvvvvvvvvvvvvvV',
+    'VYVVVVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVVVVVV'], edge: 'V', cave: true,
+    warps: { '1,14': ['route3', 24, 3, 'down'], '21,1': ['cerulean', 2, 10, 'right'] } },
+  cerulean: { rows: [
+    'TTTTTTTTTTTTTTTTTTTT',
+    'TVVVYVV.GGGGGGG...TT',
+    'TVV...V.GGGGGGG.f.TT',
+    'TT......GGGGGGG...TT',
+    'TT.f....,,,,,,....TT',
+    'TT......,,,,......TT',
+    'TT.RRRRRR,,,.rrrr.TT',
+    'TT.RRRRRR,,,.rrrr.TT',
+    'TT.lllDll,,,.hnDh.TT',
+    'TT....,..,,,...,..TT',
+    ',,....,,,,,,,,,,..TT',
+    'TT......,,,,......TT',
+    'TT.cccc.,,,,.mmmm.TT',
+    'TT.cccc.,,,,.mmmm.TT',
+    'TT.lQDl.,,,,.lMDl.TT',
+    'TT...,..,,,,...,..TT',
+    'TT...,,,,,,,,,,,..TT',
+    'TT..ff..,,,,..S...TT',
+    'TT......wwww......TT',
+    'TTTTTTTTTTTTTTTTTTTT'], edge: 'T',
+    warps: { '4,1': ['ccave', 9, 11, 'up'], '6,8': ['gym2', 4, 7, 'up'], '15,8': ['sci', 3, 4, 'up'], '5,14': ['center_cerulean', 4, 6, 'up'], '15,14': ['mart_cerulean', 4, 6, 'up'] } },
+  ccave: { rows: [
+    'VVVVVVVVVVVVVVVVVVVV',
+    'VVVVVVVVvvvVVVVVVVVV',
+    'VVVVVVVvvvvvVVVVVVVV',
+    'VVvvvvvvvSvvvvvvvvVV',
+    'VVvVVVVVVVVVVVVVvvVV',
+    'VVvVvvvvvvvvvvvVvVVV',
+    'VVvVvVVVVVVVVvvVvVVV',
+    'VVvvvVvvvvvvSVvVvvVV',
+    'VVVVVVvVVVVvVVvVVvVV',
+    'VVvvvvvVvvvvvvvVvvVV',
+    'VVvVVVVVvVVVVVVVvVVV',
+    'VVvvvvvvvvvvvvvvvSVV',
+    'VVVVVVVVVYVVVVVVVVVV',
+    'VVVVVVVVVVVVVVVVVVVV'], edge: 'V', cave: true, warps: { '9,12': ['cerulean', 4, 2, 'down'] } },
+  gym1: { rows: [
+    'XXXXXXXXXX',
+    'XOO____OOX',
+    'X________X',
+    'XO______OX',
+    'X________X',
+    'XOO____OOX',
+    'X________X',
+    'XO______OX',
+    'X________X',
+    'XXXXEEXXXX'], edge: 'X', warps: { '4,9': ['pewter', 6, 5, 'down'], '5,9': ['pewter', 6, 5, 'down'] } },
+  gym2: { rows: [
+    'XXXXXXXXXX',
+    'X________X',
+    'X_wwwwww_X',
+    'X_wwwwww_X',
+    'X_wwwwww_X',
+    'X_wwwwww_X',
+    'X________X',
+    'X________X',
+    'XXXXEEXXXX'], edge: 'X', warps: { '4,8': ['cerulean', 6, 9, 'down'], '5,8': ['cerulean', 6, 9, 'down'] } },
+  sci: { rows: [
+    'XBBXXCCX',
+    'X______X',
+    'X______X',
+    'X__KK__X',
+    'X______X',
+    'XXXEEXXX'], edge: 'X', warps: { '3,5': ['cerulean', 15, 9, 'down'], '4,5': ['cerulean', 15, 9, 'down'] } },
 };
+// Each city gets its own Poké Center and Mart interior (same layout, different way out).
+MAPS.center.kind = 'center'; MAPS.mart.kind = 'mart';
+for (const [city, cx, cy, mx, my] of [['pewter', 15, 5, 15, 11], ['cerulean', 5, 15, 15, 15]]) {
+  MAPS['center_' + city] = { rows: MAPS.center.rows, edge: 'X', kind: 'center', warps: { '4,7': [city, cx, cy, 'down'], '5,7': [city, cx, cy, 'down'] } };
+  MAPS['mart_' + city] = { rows: MAPS.mart.rows, edge: 'X', kind: 'mart', warps: { '4,7': [city, mx, my, 'down'], '5,7': [city, mx, my, 'down'] } };
+}
 for (const k in MAPS) { MAPS[k].w = MAPS[k].rows[0].length; MAPS[k].h = MAPS[k].rows.length; }
 // People and items on each map. A trainer spots you when you walk into their line of sight.
 const BUG_TEAMS = {
@@ -1075,8 +1547,69 @@ MAPS.forest.npcs = [
   { id: 'itemAntidote', x: 17, y: 16, item: 'ANTIDOTE' },
   { id: 'itemBall', x: 7, y: 3, item: 'POKé BALL' },
 ];
-MAPS.center.npcs = [{ id: 'nurse', x: 4, y: 2, spr: 'nurse', talk: () => talkNurse() }];
-MAPS.mart.npcs = [{ id: 'clerk', x: 2, y: 2, spr: 'clerk', talk: () => talkClerk() }];
+for (const k in MAPS) {
+  if (MAPS[k].kind === 'center') MAPS[k].npcs = [{ id: 'nurse', x: 4, y: 2, spr: 'nurse', talk: () => talkNurse() }];
+  if (MAPS[k].kind === 'mart') MAPS[k].npcs = [{ id: 'clerk', x: 2, y: 2, spr: 'clerk', talk: () => talkClerk() }];
+}
+const hasBadge = b => (G.badges || []).includes(b);
+const TR = (name, spr, team, prize, intro, win, after, extra = {}) => ({ name, spr, team, prize, intro, win, after, ...extra });
+MAPS.forest.npcs.push({ id: 'mew', x: 16, y: 5, mon: 'MEW', show: () => G.flags.mewHint && !G.flags.caught_MEW,
+  talk: () => legendBattle('MEW', 30, ['A small pink POKéMON is floating between the trees...', 'It giggles and looks right at you!']) });
+MAPS.pewter.npcs = [
+  { id: 'pewterGuard', x: 18, y: 6, spr: 'young', show: () => !hasBadge('BOULDER'), talk: () => pewterGuard() },
+  { id: 'pewterMan', x: 12, y: 13, spr: 'man', talk: () => say('BROCK uses ROCK POKéMON. WATER and GRASS moves hit them hard!') },
+];
+MAPS.gym1.npcs = [
+  { id: 'brock', x: 4, y: 2, spr: 'brock', dir: 'down', range: 0, trainer: TR('LEADER BROCK', 'BROCK', () => [makeMon('GEODUDE', 12), makeMon('ONIX', 14)], 1386,
+    "So you're here. I'm BROCK, PEWTER's GYM LEADER! I believe in rock-hard defense and determination. Show me what you've got!",
+    "I took you lightly. You've earned this.", 'There are lots of strong trainers out there. Keep training hard!',
+    { badge: 'BOULDER', afterBadge: ['BROCK: The BOULDER BADGE proves you beat me. Head east to ROUTE 3 and MT. MOON when you are ready!'] }) },
+  { id: 'gym1a', x: 2, y: 6, spr: 'young', dir: 'right', range: 4, trainer: TR('JR TRAINER LIAM', 'YOUNG', () => [makeMon('SANDSHREW', 10), makeMon('GEODUDE', 10)], 200,
+    "You want to battle BROCK? You'll have to get past me first!", 'Rocks can lose too...', "BROCK's ONIX is really tough. WATER or GRASS moves work well on rocks!") },
+];
+MAPS.route3.npcs = [
+  { id: 'r3ben', x: 8, y: 5, spr: 'young', dir: 'down', range: 1, trainer: TR('YOUNGSTER BEN', 'YOUNG', () => [makeMon('RATTATA', 9), makeMon('SPEAROW', 9)], 90,
+    'Hey! I just caught a SPEAROW! Let\'s see what it can do!', 'My SPEAROW needs more practice.', 'MT. MOON is just ahead. Watch out for ZUBAT!') },
+  { id: 'r3janice', x: 14, y: 9, spr: 'lass', dir: 'up', range: 2, trainer: TR('LASS JANICE', 'LASS', () => [makeMon('PIDGEY', 9), makeMon('JIGGLYPUFF', 10)], 135,
+    'You looked at me! That means we battle!', 'Aww, I lost...', "JIGGLYPUFF's song puts everyone to sleep. Even me!") },
+  { id: 'r3colton', x: 21, y: 4, spr: 'bug', dir: 'left', range: 4, trainer: TR('BUG CATCHER COLTON', 'BUG', () => [makeMon('CATERPIE', 10), makeMon('WEEDLE', 10), makeMon('METAPOD', 10)], 100,
+    'My bug POKéMON grew up in VIRIDIAN FOREST!', 'Bugs are still the best!', 'I wonder what lives inside MT. MOON?') },
+];
+MAPS.mtmoon.npcs = [
+  { id: 'mmhiker', x: 6, y: 6, spr: 'hiker', dir: 'down', range: 2, trainer: TR('HIKER MARCOS', 'HIKER', () => [makeMon('GEODUDE', 10), makeMon('GEODUDE', 10), makeMon('ONIX', 11)], 350,
+    'Whoa! You startled me! I was looking for rare stones. Let\'s battle!', 'Rock-solid... but not enough!', 'MT. MOON is full of rare stones. CLEFAIRY live deep inside.') },
+  { id: 'mmrocket1', x: 12, y: 4, spr: 'rocket', dir: 'left', range: 3, trainer: TR('ROCKET GRUNT', 'ROCKET', () => [makeMon('RATTATA', 11), makeMon('ZUBAT', 11)], 330,
+    'TEAM ROCKET is taking over this cave! Beat it, kid!', "Grr! You're tougher than you look!", 'The boss sent us here to look for rare POKéMON.') },
+  { id: 'mmrocket2', x: 22, y: 5, spr: 'rocket', dir: 'left', range: 3, trainer: TR('ROCKET GRUNT', 'ROCKET', () => [makeMon('ZUBAT', 12), makeMon('GEODUDE', 12), makeMon('RATTATA', 12)], 360,
+    "Hey! You can't come through here! TEAM ROCKET is on a secret mission!", 'Ugh... fine! Our boss is hunting a POKéMON called MEW!',
+    'They say a scientist once made a copy of MEW... and the copy escaped. Some say it hides near CERULEAN CITY.') },
+  { id: 'mmCandy', x: 1, y: 3, item: 'RARE CANDY' },
+  { id: 'mmPotion', x: 22, y: 12, item: 'SUPER POTION' },
+  { id: 'mmBall', x: 11, y: 9, item: 'GREAT BALL' },
+];
+MAPS.cerulean.npcs = [
+  { id: 'caveGuard', x: 4, y: 2, spr: 'guard', show: () => !hasBadge('CASCADE'),
+    talk: () => say('This cave is full of terribly strong POKéMON. Only trainers with the CASCADE BADGE may go in.') },
+  { id: 'rival3', x: 11, y: 3, spr: 'blue', show: () => !G.flags.beat.rival3, talk: () => rival3() },
+  { id: 'cerRose', x: 16, y: 3, spr: 'lass', dir: 'left', range: 2, trainer: TR('LASS ROSE', 'LASS', () => [makeMon('ODDISH', 14), makeMon('PSYDUCK', 14)], 210,
+    "This grass is full of rare POKéMON. I won't let you have them!", "You're good!", 'I saw an ABRA here once, but it teleported away!') },
+  { id: 'cerMan', x: 16, y: 10, spr: 'man', talk: () => say('TEAM ROCKET has been causing trouble around here. They keep asking about some rare POKéMON.') },
+];
+MAPS.gym2.npcs = [
+  { id: 'misty', x: 4, y: 1, spr: 'misty', dir: 'down', range: 0, trainer: TR('LEADER MISTY', 'MISTY', () => [makeMon('STARYU', 18), makeMon('STARMIE', 21)], 2079,
+    "Hi, you're a new face! My policy is an all-out offensive with WATER POKéMON. Ready?",
+    "Wow! You're too much! All right, you can have this.", "There's a scientist living in town. He's been asking about strong trainers.",
+    { badge: 'CASCADE', afterBadge: ['MISTY: The CASCADE BADGE shows you are a real trainer. A scientist in town wants to meet someone strong. Go see him!'] }) },
+  { id: 'gym2a', x: 8, y: 3, spr: 'lass', dir: 'down', range: 3, trainer: TR('SWIMMER DIANA', 'LASS', () => [makeMon('PSYDUCK', 16), makeMon('STARYU', 16)], 320,
+    'MISTY is the best swimmer in CERULEAN! You will never beat her!', 'Splash! I lost!', "MISTY's STARMIE is really fast. ELECTRIC or GRASS moves help!") },
+];
+MAPS.sci.npcs = [{ id: 'scientist', x: 5, y: 2, spr: 'sci', talk: () => talkScientist() }];
+MAPS.ccave.npcs = [
+  { id: 'mewtwo', x: 9, y: 1, mon: 'MEWTWO', show: () => !G.flags.caught_MEWTWO,
+    talk: () => legendBattle('MEWTWO', 45, ['...!', 'The air feels heavy. A tall figure turns to face you.', 'MEWTWO glares with fierce, cold eyes!']) },
+  { id: 'ccCandy', x: 2, y: 9, item: 'RARE CANDY' },
+  { id: 'ccUltra', x: 17, y: 3, item: 'ULTRA BALL' },
+];
 const npcList = map => (MAPS[map].npcs || []).filter(n => (!n.show || n.show()) && !(n.item && G.flags['got_' + n.id]));
 function tileAt(map, x, y) { const m = MAPS[map]; return (x < 0 || y < 0 || x >= m.w || y >= m.h) ? m.edge : m.rows[y][x]; }
 const tileImg = ch => (ch === 'w' && (frame >> 5) & 1) ? WATER2 : (T[ch] || T['.']);
@@ -1088,7 +1621,15 @@ const SIGNS = {
     '9,2': 'VIRIDIAN CITY is just to the north!',
   },
   viridian: { '3,13': 'VIRIDIAN CITY\nA green, quiet town by the forest.', '14,5': 'POKéMON CENTER\nHeal your POKéMON for free!', '4,10': 'POKé MART\nYour POKéMON supply store.' },
-  forest: { '9,1': 'PEWTER CITY lies past the forest... but this exit is still being built!' },
+  forest: { '9,1': 'PEWTER CITY is just north of the forest.' },
+  pewter: { '3,5': 'PEWTER CITY POKéMON GYM\nLEADER: BROCK\nThe rock-solid trainer!', '3,13': 'PEWTER MUSEUM OF SCIENCE', '14,15': 'PEWTER CITY\nA stone gray city' },
+  route3: { '26,9': 'ROUTE 3\nMT. MOON is just ahead' },
+  cerulean: { '14,17': 'CERULEAN CITY\nA city of clear blue water' },
+  ccave: {
+    '9,3': "A torn journal page:\n'We found it deep in the jungle. A tiny pink POKéMON. We named it MEW.'",
+    '12,7': "A torn journal page:\n'From MEW's genes we made a new POKéMON. We named it MEWTWO.'",
+    '17,11': "A torn journal page:\n'MEWTWO is far too strong. It no longer listens to us. It broke free...'",
+  },
 };
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
@@ -1098,7 +1639,7 @@ const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 let G;
 function newState() {
   return { scene: 'title', name: 'RED', party: [], box: [], money: 3000, bag: {}, dex: { seen: {}, own: {} }, lastHeal: null,
-    flags: { beat: {} }, map: 'town', x: 5, y: 24, dir: 'down' };
+    flags: { beat: {} }, badges: [], map: 'town', x: 5, y: 24, dir: 'down' };
 }
 G = newState();
 const P = { off: 0, dx: 0, dy: 0, steps: 0, turn: 0, lastBump: -99, doorKey: null };
@@ -1179,6 +1720,14 @@ const SONGS = {
     'E5:2 G5:2 C6:2 E6:2', 'D6:3 C6:1 A5:4', 'F5:2 E5:2 D5:2 G5:2', 'C6:6 -:2'],
     bass: [walk('C3', 'G2', 'C3', 'G2'), walk('A2', 'E3', 'A2', 'E3'), walk('F2', 'C3', 'F2', 'C3'), walk('G2', 'D3', 'G2', 'D3'),
       walk('C3', 'G2', 'C3', 'G2'), walk('F2', 'C3', 'F2', 'C3'), walk('G2', 'D3', 'G2', 'B2'), walk('C3', 'G2', 'C3', '-')] },
+  cave: { bpm: 90, loop: true, lead: [
+    'E4:2 -:2 G4:2 -:2', 'F#4:2 -:2 A4:4', 'E4:2 -:2 G4:2 B4:2', 'C5:6 -:2',
+    'B4:2 -:2 G4:2 -:2', 'A4:2 -:2 F#4:4', 'G4:2 E4:2 D#4:2 F#4:2', 'E4:6 -:2'],
+    bass: ['E2:4 B2:4', 'D2:4 A2:4', 'C2:4 G2:4', 'A2:4 E2:4', 'E2:4 B2:4', 'D2:4 A2:4', 'C2:4 B1:4', 'E2:8'] },
+  legend: { bpm: 176, loop: true, lead: [
+    'E5:1 E5:1 G5:1 E5:1 A5:2 G5:2', 'F#5:1 E5:1 D#5:1 E5:1 B4:4', 'C6:1 B5:1 A5:1 G5:1 F#5:2 A5:2', 'B5:4 D#5:4',
+    'E5:1 G5:1 B5:1 E6:1 D6:2 B5:2', 'C6:2 A5:2 F#5:2 D#5:2', 'E5:1 F#5:1 G5:1 A5:1 B5:2 D#6:2', 'E6:6 -:2'],
+    bass: [bounce('E2', 'E3'), bounce('E2', 'E3'), bounce('A2', 'A3'), bounce('B2', 'B3'), bounce('E2', 'E3'), bounce('A2', 'A3'), bounce('B2', 'B3'), bounce('E2', 'E3')] },
   victory: { bpm: 150, loop: false, lead: ['G5:1 G5:1 G5:1 C6:3 A5:1 B5:1', 'C6:6 -:2'], bass: ['C3:3 C3:3 F3:2', 'G3:2 C3:6'] },
 };
 for (const k in SONGS) {
@@ -1230,10 +1779,13 @@ function playNote(a, v, f, t, dur) {
 function currentTrack() {
   if (G.scene === 'title') return 'title';
   if (G.scene === 'evolve') return 'evolve';
-  if (G.scene === 'battle' || ui.battleIntro) return B && B.victory ? 'victory' : 'battle';
-  if (G.scene === 'intro' || G.map === 'lab' || G.map === 'viridian') return 'town';
-  if (G.map === 'center' || G.map === 'mart') return 'center';
+  if (G.scene === 'battle' || ui.battleIntro) return B && B.victory ? 'victory' : ui.legendNext || (B && B.legend) ? 'legend' : 'battle';
+  const m = MAPS[G.map];
+  if (G.scene === 'intro' || ['lab', 'viridian', 'pewter', 'cerulean', 'sci'].includes(G.map)) return 'town';
+  if (m.kind || G.map === 'gym1' || G.map === 'gym2') return 'center';
+  if (m.cave) return 'cave';
   if (G.map === 'forest') return 'forest';
+  if (G.map === 'route3') return 'route';
   return G.y <= 19 ? 'route' : 'town';
 }
 
@@ -1411,8 +1963,12 @@ function tryMove(d) {
   const [dx, dy] = DIRS[d], nx = G.x + dx, ny = G.y + dy, ch = tileAt(G.map, nx, ny), m = MAPS[G.map];
   if (G.map === 'town' && !G.flags.starter && dy < 0 && ny <= 19) { run(gate); return; }
   // Walking off the edge of a map into the next one.
-  const edge = ny < 0 ? 'north' : ny >= m.h ? 'south' : null;
-  if (edge && m[edge]) { const to = m[edge]; run(() => warp(to, nx, edge === 'north' ? MAPS[to].h - 1 : 0, d, true)); return; }
+  const edge = ny < 0 ? 'north' : ny >= m.h ? 'south' : nx < 0 ? 'west' : nx >= m.w ? 'east' : null;
+  if (edge === 'east' && G.map === 'pewter' && !hasBadge('BOULDER')) { run(pewterGuard); return; }
+  if (edge && m[edge]) {
+    const to = m[edge], tx = edge === 'west' ? MAPS[to].w - 1 : edge === 'east' ? 0 : nx, ty = edge === 'north' ? MAPS[to].h - 1 : edge === 'south' ? 0 : ny;
+    run(() => warp(to, tx, ty, d, true)); return;
+  }
   if (SOLID.has(ch) || npcAt(nx, ny)) {
     if (frame - P.lastBump > 18) { sfx('bump'); P.lastBump = frame; }
     const key = `${G.x},${G.y},${d}`;
@@ -1437,7 +1993,10 @@ function onStep() {
     }
   }
   if (G.map === 'viridian' && G.y === 2 && G.x >= 8 && G.x <= 11 && G.flags.starter && !G.flags.beat.rival2) { run(rival2); return; }
-  if (ch === 'G' && G.flags.starter && G.party.some(m => m.hp > 0) && Math.random() < 0.1) run(() => startBattle(rollWild()));
+  if (G.map === 'cerulean' && G.y === 4 && G.x >= 8 && G.x <= 13 && !G.flags.beat.rival3) { run(rival3); return; }
+  // Tall grass, or any cave floor, can hide wild Pokémon.
+  const cave = ch === 'v' && MAPS[G.map].cave;
+  if ((ch === 'G' || cave) && G.flags.starter && G.party.some(m => m.hp > 0) && Math.random() < (cave ? 0.07 : 0.1)) run(() => startBattle(rollWild()));
 }
 // Poisoned Pokémon lose 1 HP every 4 steps outside battle; at 1 HP the poison wears off.
 function poisonStep() {
@@ -1464,7 +2023,71 @@ async function trainerBattle(n) {
   const t = n.trainer;
   await say(`${t.name.split(' ').pop()}: ${t.intro}`);
   const result = await startBattle({ trainer: { ...t, team: t.team() } });
-  if (result === 'won') G.flags.beat[n.id] = true;
+  if (result !== 'won') return;
+  G.flags.beat[n.id] = true;
+  if (t.badge && !hasBadge(t.badge)) {
+    G.badges.push(t.badge); sfx('caught');
+    await say(`${G.name} received the ${t.badge} BADGE!`);
+    for (const line of t.afterBadge || []) await say(line);
+    autoSave();
+  }
+}
+async function pewterGuard() {
+  G.dir = 'right';
+  await say("You're a trainer, right? BROCK at the GYM is looking for new challengers! Beat him before you head east.");
+}
+const evolvedForm = (name, lvl) => { let n = name; while (EVO[n] && lvl >= EVO[n][1]) n = EVO[n][0]; return n; };
+async function rival3() {
+  G.dir = 'up';
+  await say(`BLUE: Yo! ${G.name}! You made it through MT. MOON? Let me show you how strong I've gotten!`);
+  const result = await startBattle({ trainer: { name: 'BLUE', spr: 'BLUE', prize: 595,
+    team: [makeMon(evolvedForm('PIDGEY', 17), 17), makeMon('ABRA', 16), makeMon('RATTATA', 15), makeMon(evolvedForm(G.flags.rivalMon || 'SQUIRTLE', 18), 18)],
+    win: 'BLUE: Hey! Take it easy! You won already!', lose: "BLUE: Heh! You've still got a long way to go!" } });
+  if (result !== 'won') return;
+  G.flags.beat.rival3 = true;
+  await say("BLUE: I heard a scientist in town tells stories about a super rare POKéMON. Whatever. I'm off to find stronger POKéMON. Smell ya later!");
+  sfx('door'); await fadeOut(); await wait(10); await fadeIn();
+}
+async function talkScientist() {
+  if (!hasBadge('CASCADE')) {
+    await say('I used to work at a research lab on an island far to the south. We did things there that we should not have...');
+    await say('Hmph. Come back once you have proven yourself. Beat MISTY at the GYM, then we can talk.');
+    return;
+  }
+  if (!G.flags.toldStory) {
+    G.flags.toldStory = true;
+    await say("You have the CASCADE BADGE? Then I'll tell you my story.");
+    await say('Years ago, my team explored a jungle far away. Deep inside, we found a tiny pink POKéMON. We named it MEW.');
+    await say('MEW seemed to know every move there is. We wanted to create a POKéMON even stronger, so we used its genes.');
+    await say('We succeeded. We named it MEWTWO. But it was far too powerful... and it grew angry at the people who made it.');
+    await say('One night MEWTWO destroyed the lab and vanished. I believe it hides in the cave north of this town.');
+    await say('Please, take this. It is a MASTER BALL. It will catch any POKéMON without fail.');
+    addItem('MASTER BALL'); sfx('get');
+    await say(`${G.name} got a MASTER BALL!`);
+    await say('The guard at the cave will let you in now. Be careful. MEWTWO is unlike any POKéMON you have faced.');
+    autoSave();
+    return;
+  }
+  if ((G.flags.metMewtwo || G.dex.own.MEWTWO) && !G.flags.mewHint) {
+    G.flags.mewHint = true;
+    await say('You faced MEWTWO and came back? Astonishing!');
+    await say('Then perhaps MEW is still out there too. Long ago, someone saw a pink POKéMON in the forest near PALLET TOWN...');
+    await say('VIRIDIAN FOREST. If MEW is anywhere, it is there.');
+    autoSave();
+    return;
+  }
+  await say(G.flags.mewHint && !G.dex.own.MEW ? 'Have you searched VIRIDIAN FOREST for MEW? Look deep in the east part of the woods.' : 'MEW and MEWTWO... I hope they are both happier with you than they ever were with us.');
+}
+// Static encounters (MEW and MEWTWO): they stay until caught, so a lost or fled battle can be tried again.
+async function legendBattle(name, lvl, intro) {
+  for (const line of intro) await say(line);
+  const m = makeMon(name, lvl);
+  m.isLegend = true;
+  const result = await startBattle(m);
+  if (name === 'MEWTWO') G.flags.metMewtwo = true;
+  if (result === 'caught') G.flags['caught_' + name] = true;
+  else if (result === 'won') await say(`${name} is exhausted... but it will recover. It is still out there.`);
+  autoSave();
 }
 function interact() {
   const [dx, dy] = DIRS[G.dir], tx = G.x + dx, ty = G.y + dy, ch = tileAt(G.map, tx, ty);
@@ -1481,13 +2104,19 @@ function interact() {
     if (ch === 'K') run(() => checkBall(tx - 3));
     else if (ch === 'B') run(() => say("It's crammed full of POKéMON books!"));
     else if (ch === 'C') run(() => say("It's a PC. There's an e-mail:\n'Catch every POKéMON you can find!' - OAK"));
-  } else if (G.map === 'center' || G.map === 'mart') {
-    if (ch === 'C') run(() => say("It's a PC. Box storage isn't set up yet."));
-    else if (ch === 'B') run(() => say(G.map === 'mart' ? 'The shelves are stocked with POKé BALLs and medicine.' : 'Magazines about POKéMON care.'));
+  } else if (MAPS[G.map].kind) {
+    if (ch === 'C') run(pcMenu);
+    else if (ch === 'B') run(() => say(MAPS[G.map].kind === 'mart' ? 'The shelves are stocked with POKé BALLs and medicine.' : 'Magazines about POKéMON care.'));
+  } else if (G.map === 'sci' || G.map === 'gym1' || G.map === 'gym2') {
+    if (ch === 'B') run(() => say('Old research notes about POKéMON genes. Most pages are torn out.'));
+    else if (ch === 'C') run(() => say("A dusty computer. The screen reads: 'PROJECT M2 - CANCELLED'."));
+    else if (ch === 'O') run(() => say('A big, heavy boulder.'));
   } else {
     const sign = (SIGNS[G.map] || {})[`${tx},${ty}`];
     if (sign) run(() => say(sign));
     else if (ch === 'd' && G.map === 'viridian') run(() => say("The door is locked. Nobody's home."));
+    else if (ch === 'd' && G.map === 'pewter') run(() => say('PEWTER MUSEUM OF SCIENCE. Closed today for fossil cleaning.'));
+    else if (ch === 'V') run(() => say('A rough rock wall.'));
     else if (ch === 'd') run(() => houseDoor(tx));
     else if (ch === 'w') run(() => say('The water is crystal clear.'));
     else if (ch === 'n') run(() => say("You peek through the window. It's cozy inside."));
@@ -1591,7 +2220,7 @@ async function talkNurse() {
   if (!(await ask('Shall we heal your POKéMON?'))) { await say('We hope to see you again!'); return; }
   await say("OK. We'll need your POKéMON.");
   sfx('heal'); await fadeOut(); healAll(); await wait(50); await fadeIn();
-  G.lastHeal = { map: 'center', x: 4, y: 4, dir: 'up' };
+  G.lastHeal = { map: G.map, x: 4, y: 4, dir: 'up' };
   await say("Thank you! Your POKéMON are fighting fit! We hope to see you again!");
   autoSave();
 }
@@ -1679,7 +2308,9 @@ function drawCard() {
   drawText('MONEY/', 8, 48); drawText('¥' + G.money, 64, 48);
   drawText('POKéDEX/', 8, 64); drawText(G.flags.dex ? `${Object.keys(G.dex.own).length} OWN` : '---', 80, 64);
   drawText('TEAM/', 8, 80); G.party.forEach((m, i) => drawSprite(MON_IMG[m.name], 56 + i * 16, 76));
-  drawText('BADGES/', 8, 104); drawText('NONE YET', 72, 104, 2);
+  drawText('BADGES/', 8, 104);
+  if (!G.badges.length) drawText('NONE YET', 72, 104, 2);
+  G.badges.forEach((b, i) => drawText(b, 16 + (i % 2) * 72, 116 + Math.floor(i / 2) * 10));
 }
 // Pick a number with up/down (and left/right for steps of 10). Resolves 0 on cancel.
 const chooseQty = (max, price) => new Promise(res => { ui.qty = { n: 1, max, price, res }; });
@@ -1791,9 +2422,9 @@ const effStat = (p, k) => p.mon[k] * stageMul(p.st[k]);
 const nameOf = p => p === B.ally ? p.mon.name : (B.trainer ? 'Enemy ' : 'Wild ') + p.mon.name;
 const levelOrStatus = m => m.status || ':L' + m.lvl;
 function rollWild() {
-  // Wild Pokémon get a little tougher as your strongest team member levels up.
-  const bonus = Math.max(0, Math.floor((Math.max(5, ...G.party.map(m => m.lvl)) - 5) / 3));
-  const table = WILD[G.map] || WILD.town;
+  // Wild Pokémon get a little tougher when your strongest team member is well above the area's level.
+  const table = WILD[G.map] || WILD.town, top = Math.max(...table.map(w => w[3]));
+  const bonus = Math.max(0, Math.floor((Math.max(5, ...G.party.map(m => m.lvl)) - top - 2) / 3));
   let r = Math.random() * table.reduce((s, w) => s + w[1], 0);
   for (const [name, wgt, lo, hi] of table) { if ((r -= wgt) < 0) return makeMon(name, rand(lo, hi) + bonus); }
   return makeMon('PIDGEY', 3);
@@ -1801,14 +2432,15 @@ function rollWild() {
 // foe is a wild Pokémon, or { trainer: { name, spr, team, prize, win, lose, practice } }.
 async function startBattle(foe) {
   const t = foe.trainer || null, first = t ? t.team[0] : foe;
-  ui.battleIntro = true;
+  ui.battleIntro = true; ui.legendNext = !!first.isLegend;
   if (soundMode === 1) sfx('encounter');
   await tween(24, tt => { ui.flash = Math.floor(tt * 24 / 4) % 2 === 0; });
   ui.flash = false;
   await tween(24, tt => { ui.wipe = tt; });
   B = { trainer: t, team: t ? t.team : [first], enemy: { mon: first, st: stages(), conf: 0 }, ally: null, eX: -112, eOffY: 0, eVis: !t, eHide: false, eInfo: false,
     aX: 0, aOffY: 0, aVis: false, aHide: false, aInfo: false, aPop: 0, ball: null, runTries: 0, lastAct: 0, lastMove: 0, leveled: new Set(),
-    tX: 160, showBalls: false, etX: t ? -112 : null };
+    tX: 160, showBalls: false, etX: t ? -112 : null, legend: !!first.isLegend };
+  ui.legendNext = false;
   G.scene = 'battle'; ui.wipe = 0; ui.battleIntro = false;
   await tween(40, tt => { const o = Math.round(-112 * (1 - tt)); if (t) B.etX = o; else B.eX = o; B.tX = Math.round(8 + 152 * (1 - tt)); });
   B.showBalls = true;
@@ -1819,7 +2451,7 @@ async function startBattle(foe) {
     await enemySendOut(first);
   } else {
     B.eInfo = true; see(first.name);
-    await say(`Wild ${first.name} appeared!`);
+    await say(first.isLegend ? `The legendary ${first.name} appeared!` : `Wild ${first.name} appeared!`);
   }
   B.showBalls = false;
   await tween(16, tt => { B.tX = Math.round(8 - 80 * tt); });
@@ -1956,6 +2588,7 @@ async function battleLoop() {
     for (const [u, t, mv] of order) {
       if (u.mon.hp <= 0 || t.mon.hp <= 0 || (u !== B.ally && u !== B.enemy)) continue;
       await useMove(u, t, mv);
+      if (B.fled) return B.fled;
       const r = await resolveFaints(); if (r) return r;
     }
     // Poison and burns hurt at the end of each turn.
@@ -2027,8 +2660,30 @@ async function useMove(u, t, mv) {
     else { u.st[M.self] = Math.min(6, u.st[M.self] + M.amt); await say(`${nameOf(u)}'s ${STAT_NAME[M.self]} ${M.amt > 1 ? 'greatly rose' : 'rose'}!`); }
     return;
   }
+  if (M.heal) {
+    ui.dialog = null;
+    if (me.hp >= me.maxhp) { await say('But it failed!'); return; }
+    sfx('heal'); me.hp = Math.min(me.maxhp, me.hp + Math.floor(me.maxhp / 2)); await drainHP(me);
+    await say(`${nameOf(u)} regained health!`);
+    return;
+  }
+  if (M.teleport) {
+    ui.dialog = null;
+    if (B.trainer) { await say('But it failed!'); return; }
+    sfx('run'); B.fled = isAlly ? 'ran' : 'fled';
+    if (!isAlly) { B.eVis = false; await say(`${nameOf(u)} teleported away!`); }
+    return;
+  }
   const accMul = u.st.acc >= 0 ? (3 + u.st.acc) / 3 : 3 / (3 - u.st.acc);
-  if (Math.random() * 100 >= M.acc * accMul) { ui.dialog = null; await say(`${nameOf(u)}'s attack missed!`); return; }
+  if (!M.sure && Math.random() * 100 >= M.acc * accMul) { ui.dialog = null; await say(`${nameOf(u)}'s attack missed!`); return; }
+  if (M.inflict === 'CONF') {
+    ui.dialog = null;
+    if (t.conf) { await say('But it failed!'); return; }
+    sfx('stat'); await shake(!isAlly);
+    t.conf = rand(2, 5);
+    await say(`${nameOf(t)} became confused!`);
+    return;
+  }
   if (M.inflict) {
     ui.dialog = null;
     if (!canInflict(t, M.inflict)) { await say('But it failed!'); return; }
@@ -2040,6 +2695,7 @@ async function useMove(u, t, mv) {
   await lunge(isAlly);
   if (M.pow) {
     const crit = Math.random() < 1 / 16, eff = typeMul(M.type, SPECIES[t.mon.name].types);
+    if (eff === 0) { ui.dialog = null; await say(`It doesn't affect ${nameOf(t)}...`); return; }
     const L = me.lvl * (crit ? 2 : 1), atk = effStat(u, 'atk') * (me.status === 'BRN' ? 0.5 : 1);
     let dmg = Math.floor(Math.floor((2 * L / 5 + 2) * M.pow * atk / effStat(t, 'def')) / 50) + 2;
     if (SPECIES[me.name].types.includes(M.type)) dmg = Math.floor(dmg * 1.5);
@@ -2053,6 +2709,10 @@ async function useMove(u, t, mv) {
     if (crit) await say('A critical hit!');
     if (eff > 1) await say("It's super effective!");
     else if (eff < 1) await say("It's not very effective...");
+    if (M.drain && me.hp > 0 && me.hp < me.maxhp) {
+      me.hp = Math.min(me.maxhp, me.hp + Math.max(1, Math.floor(dealt / 2))); await drainHP(me);
+      await say(`Sucked health from ${nameOf(t)}!`);
+    }
     if (M.recoil && me.hp > 0) {
       me.hp = Math.max(0, me.hp - Math.max(1, Math.floor(dealt / 4))); await drainHP(me);
       await say(`${nameOf(u)} is hit with recoil!`);
@@ -2066,7 +2726,7 @@ async function useMove(u, t, mv) {
     sfx('stat'); await shake(!isAlly);
     ui.dialog = null;
     if (t.st[st] <= -6) await say('Nothing happened!');
-    else { t.st[st]--; await say(`${nameOf(t)}'s ${STAT_NAME[st]} fell!`); }
+    else { t.st[st] = Math.max(-6, t.st[st] - (M.amt || 1)); await say(`${nameOf(t)}'s ${STAT_NAME[st]} ${M.amt > 1 ? 'greatly fell' : 'fell'}!`); }
   }
   ui.dialog = null;
 }
@@ -2148,12 +2808,14 @@ async function battleItem() {
 async function useItemOn(name) {
   const it = ITEMS[name];
   if (it.ball) { await say("You can't use that here!"); return false; }
+  if (it.candy && B) { await say('Save that for after the battle!'); return false; }
   ui.overlay = 'party'; ui.partyIdx = 0;
   say('Use on which POKéMON?', { keep: true });
   const idx = await choose(G.party.map(m => m.name), { draw: partyCursor });
   ui.overlay = null; ui.dialog = null;
   if (idx < 0) return false;
   const m = G.party[idx];
+  if (it.candy) return useCandy(m);
   const works = m.hp > 0 && (it.heal ? m.hp < m.maxhp : m.status === it.cure);
   if (!works) { await say("It won't have any effect."); return false; }
   takeItem(name); sfx('heal');
@@ -2168,6 +2830,60 @@ async function useItemOn(name) {
   }
   return true;
 }
+// RARE CANDY: one level, any moves that level teaches, and evolution if it's time.
+async function useCandy(m) {
+  if (m.lvl >= 100) { await say("It won't have any effect."); return false; }
+  takeItem('RARE CANDY');
+  const oldMax = m.maxhp;
+  m.lvl++; m.exp = Math.max(m.exp, m.lvl ** 3); calcStats(m);
+  if (m.hp > 0) m.hp += m.maxhp - oldMax;
+  m.dhp = m.hp;
+  sfx('levelup'); await say(`${m.name} grew to level ${m.lvl}!`);
+  const mv = (LEVEL_LEARN[m.name] || {})[m.lvl];
+  if (mv) await learnMove(m, mv);
+  if (EVO[m.name] && m.lvl >= EVO[m.name][1] && m.hp > 0) {
+    await fadeOut(); await evolve(m); G.scene = 'world'; await fadeIn();
+  }
+  return true;
+}
+// The PC in every Poké Center stores Pokémon that don't fit in your team of six.
+async function pcMenu() {
+  sfx('select');
+  await say(`${G.name} turned on the PC.`, { keep: true });
+  while (true) {
+    const c = await choose(['WITHDRAW', 'DEPOSIT', 'LOG OFF'], { x: 0, y: 0, w: 96, h: 56 });
+    if (c < 0 || c === 2) break;
+    if (c === 0) {
+      if (!G.box.length) { await say('There are no POKéMON in the BOX.'); continue; }
+      if (G.party.length >= 6) { await say('Your team is full! Deposit a POKéMON first.'); continue; }
+      const i = await pickFromList(G.box.map(m => m.name.padEnd(11) + ':L' + m.lvl), 'Withdraw which POKéMON?');
+      if (i < 0) continue;
+      const [m] = G.box.splice(i, 1); G.party.push(m); sfx('get');
+      await say(`${m.name} was taken out. It joined your team!`);
+    } else {
+      if (G.party.length <= 1) { await say("You can't deposit your last POKéMON!"); continue; }
+      const i = await pickFromList(G.party.map(m => m.name.padEnd(11) + ':L' + m.lvl), 'Deposit which POKéMON?');
+      if (i < 0) continue;
+      const [m] = G.party.splice(i, 1); healMon(m); G.box.push(m); sfx('get');
+      await say(`${m.name} was stored in the BOX.`);
+    }
+  }
+  ui.dialog = null;
+}
+// A list that may be longer than the screen: shows 6 at a time with MORE to page.
+async function pickFromList(names, prompt) {
+  let page = 0;
+  while (true) {
+    const slice = names.slice(page * 6, page * 6 + 6), more = names.length > (page + 1) * 6 || page > 0;
+    say(prompt, { keep: true });
+    const opts = more ? [...slice, 'MORE...'] : slice;
+    const i = await choose(opts, { x: 0, y: 0, w: 160, h: 8 + opts.length * 13, spacing: 13 });
+    if (i < 0) { ui.dialog = null; return -1; }
+    if (more && i === slice.length) { page = names.length > (page + 1) * 6 ? page + 1 : 0; continue; }
+    ui.dialog = null;
+    return page * 6 + i;
+  }
+}
 async function throwBall(ballName = 'POKé BALL') {
   const m = B.enemy.mon;
   takeItem(ballName);
@@ -2180,7 +2896,7 @@ async function throwBall(ballName = 'POKé BALL') {
   await tween(10, t => { B.ball.y = Math.round(20 + 18 * t); });
   const bonus = ITEMS[ballName].ball * (m.status === 'SLP' ? 2 : m.status ? 1.5 : 1);
   const a = Math.max(1, Math.floor((3 * m.maxhp - 2 * m.hp) * SPECIES[m.name].rate * bonus / (3 * m.maxhp)));
-  const p = Math.min(1, a / 255), caught = Math.random() < p;
+  const p = Math.min(1, a / 255), caught = ITEMS[ballName].ball >= 255 || Math.random() < p;
   const shakes = caught ? 3 : Math.min(2, Math.floor(Math.random() * 3 * Math.min(1, p * 2.5)));
   for (let i = 0; i < shakes; i++) {
     await wait(14); sfx('shake');
@@ -2198,7 +2914,7 @@ async function throwBall(ballName = 'POKé BALL') {
     await say(`All right! ${m.name} was caught!`);
     if (isNew && G.flags.dex) await say(`New POKéDEX data will be added for ${m.name}!`);
     if (G.party.length < 6) { G.party.push(m); await say(`${m.name} joined your team!`); }
-    else { G.box.push(m); await say(`Your team is full. ${m.name} was sent to the PC.`); }
+    else { healMon(m); G.box.push(m); await say(`Your team is full. ${m.name} was sent to the PC BOX.`); }
     return true;
   }
   B.ball = null; B.eVis = true; sfx('hit');
@@ -2220,6 +2936,7 @@ function drawWorld() {
   }
   for (const n of npcList(G.map)) {
     if (n.item) drawSprite(BALL, n.x * 16 + 4 - cx, n.y * 16 + 4 - cy);
+    else if (n.mon) { if (n.mon !== 'MEW' || Math.floor(frame / 12) % 5) drawSprite(MON_IMG[n.mon], n.x * 16 - cx, n.y * 16 - 4 - cy + (Math.floor(frame / 20) % 2)); }
     else drawSprite(NPC_SPR[n.spr], n.x * 16 - cx, n.y * 16 - 4 - cy);
   }
   if (ui.emote) { const ex = ui.emote.x * 16 - cx, ey = ui.emote.y * 16 - 20 - cy; box(ex, ey, 16, 15); drawText('!', ex + 5, ey + 4); }
@@ -2389,7 +3106,7 @@ function saveGame() {
   try {
     G.savedAt = Date.now();
     return writeSave(JSON.stringify({ name: G.name, party: G.party.map(strip), box: G.box.map(strip), money: G.money, bag: G.bag,
-      dex: G.dex, lastHeal: G.lastHeal, flags: G.flags, map: G.map, x: G.x, y: G.y, dir: G.dir, savedAt: G.savedAt }));
+      dex: G.dex, lastHeal: G.lastHeal, flags: G.flags, badges: G.badges, map: G.map, x: G.x, y: G.y, dir: G.dir, savedAt: G.savedAt }));
   } catch (e) { return false; }
 }
 function autoSave() {
@@ -2410,6 +3127,8 @@ function loadGame() {
     // Saves from version 2 had a ball count instead of a bag, and no Pokédex, PP or status.
     if (d.balls && !d.bag) G.bag = { 'POKé BALL': d.balls };
     G.flags.beat = G.flags.beat || {};
+    G.badges = Array.isArray(d.badges) ? d.badges : [];
+    if (!MAPS[G.map]) { G.map = 'town'; G.x = 5; G.y = 24; }
     if (!d.dex) for (const m of [...G.party, ...G.box]) own(m.name);
     if (G.flags.starter && !d.dex) { G.flags.dex = true; G.flags.rivalLeft = true; }
     for (const m of [...G.party, ...G.box]) {
