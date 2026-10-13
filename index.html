@@ -2248,8 +2248,9 @@ function drawTitle() {
   drawText('POKéMON', 24, 10, 3, 2);
   centerText('SIMPLE VERSION', 32, 2);
   drawSprite(MON_BIG[STARTERS[Math.floor(frame / 120) % 4]], 56, 50);
-  if (!ui.menu && Math.floor(frame / 30) % 2 === 0) centerText('PRESS START', 112);
-  if (!ui.menu) centerText('A FAN-MADE GAME', 132, 1);
+  if (!ui.menu && !ui.dialog && Math.floor(frame / 30) % 2 === 0) centerText('PRESS START', 104);
+  if (!ui.menu && !ui.dialog && ui.saveInfo) centerText(ui.saveInfo, 118, 2);
+  if (!ui.menu && !ui.dialog) centerText('A FAN-MADE GAME', 132, 1);
 }
 function drawIntro() {
   drawSprite(OAK_BIG, 56, 24);
@@ -2353,16 +2354,32 @@ function loadGame() {
 // ---------------------------------------------------------------------------
 // Title & intro
 // ---------------------------------------------------------------------------
+// What the title screen says about saving: whether a save exists, and whether this browser keeps saves at all.
+function saveStatus() {
+  try {
+    localStorage.setItem(SAVE_KEY + '-test', '1'); localStorage.removeItem(SAVE_KEY + '-test');
+    const d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (!d || !Array.isArray(d.party)) return 'NO SAVED GAME';
+    return `SAVE: ${d.name} ${d.party.length} PKMN`;
+  } catch (e) { return 'BROWSER BLOCKS SAVES'; }
+}
 async function main() {
   while (true) {
     G = newState(); P.off = 0;
+    ui.saveInfo = saveStatus();
     await fadeIn();
     await waitButton();
     sfx('select');
     if (hasSave()) {
-      const i = await choose(['NEW GAME', 'CONTINUE'], { x: 36, y: 100, w: 88, h: 40, cancel: false });
-      if (i === 1 && loadGame()) { await fadeOut(); G.scene = 'world'; await fadeIn(); return; }
+      // CONTINUE comes first so a quick double press loads your game instead of starting over.
+      const i = await choose(['CONTINUE', 'NEW GAME'], { x: 36, y: 100, w: 88, h: 40, cancel: false });
+      if (i === 0) {
+        if (loadGame()) { ui.saveInfo = null; await fadeOut(); G.scene = 'world'; await fadeIn(); return; }
+        await say("The saved game couldn't be loaded.");
+      }
+      if (!(await ask('Start a NEW GAME? Your saved game will be erased!'))) continue;
     }
+    ui.saveInfo = null;
     await fadeOut();
     await intro();
     return;
