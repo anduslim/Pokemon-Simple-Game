@@ -2311,12 +2311,60 @@ let lastAutoSave = 0;
 const strip = m => ({ name: m.name, lvl: m.lvl, exp: m.exp, hp: m.hp, moves: m.moves, pp: m.pp, status: m.status, sleep: m.sleep });
 const autosaveOn = () => G.flags.autosave !== false;
 const ago = t => { const s = Math.round((Date.now() - t) / 1000); return s < 60 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} hr ago`; };
+// Saves go to two places: this browser's local storage, and (when the page is open in the
+// Claude artifact viewer and you're signed in) a private save on your Claude account through the
+// `db` capability. Only you can read your account save. Loading picks whichever copy is newer, so a
+// browser that clears storage for embedded pages (Safari, in-app browsers) no longer loses the game.
+const cloud = { ref: null, raw: null, ready: false, writing: false, pending: null };
+const cloudInit = (async () => {
+  try {
+    if (!window.claude || !window.claude.use) return;
+    const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+    if (!db || !user) return;
+    const uid = await user.id();
+    if (!uid) return;
+    const ref = db.doc('data/users/' + uid + '/save');
+    const snap = await ref.get();
+    cloud.ref = ref; cloud.ready = true;
+    if (snap.exists && typeof snap.data().json === 'string') cloud.raw = snap.data().json;
+    if (G.scene === 'title') ui.saveInfo = saveStatus();
+  } catch (e) { cloud.ref = null; cloud.ready = false; }
+})();
+// One account write at a time; a save requested mid-write goes out right after with the latest data.
+async function cloudWrite(raw) {
+  if (!cloud.ref) return;
+  cloud.raw = raw;
+  if (cloud.writing) { cloud.pending = raw; return; }
+  cloud.writing = true;
+  try {
+    let next = raw;
+    while (next) {
+      cloud.pending = null;
+      try { await cloud.ref.set({ json: next, savedAt: Date.now() }); }
+      catch (e) { if (e && (e.code === 'invalid_argument' || e.code === 'revoked' || e.code === 'not_granted')) { cloud.ref = null; break; } }
+      next = cloud.pending;
+    }
+  } finally { cloud.writing = false; }
+}
+function localRaw() { try { return localStorage.getItem(SAVE_KEY); } catch (e) { return null; } }
+function writeSave(raw) {
+  let ok = false;
+  try { localStorage.setItem(SAVE_KEY, raw); ok = true; } catch (e) { /* storage blocked; the account copy may still work */ }
+  if (cloud.ref) { cloudWrite(raw); ok = true; }
+  return ok;
+}
+// The newer of the browser save and the account save.
+function bestSaveRaw() {
+  const l = localRaw(), c = cloud.raw;
+  const t = r => { try { return JSON.parse(r).savedAt || 0; } catch (e) { return -1; } };
+  if (!l) return c; if (!c) return l;
+  return t(c) > t(l) ? c : l;
+}
 function saveGame() {
   try {
     G.savedAt = Date.now();
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ name: G.name, party: G.party.map(strip), box: G.box.map(strip), money: G.money, bag: G.bag,
+    return writeSave(JSON.stringify({ name: G.name, party: G.party.map(strip), box: G.box.map(strip), money: G.money, bag: G.bag,
       dex: G.dex, lastHeal: G.lastHeal, flags: G.flags, map: G.map, x: G.x, y: G.y, dir: G.dir, savedAt: G.savedAt }));
-    return true;
   } catch (e) { return false; }
 }
 function autoSave() {
@@ -2328,10 +2376,10 @@ function autoSave() {
 const quickSave = () => { if (G.flags.started && autosaveOn() && G.scene !== 'evolve') saveGame(); };
 addEventListener('pagehide', quickSave);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') quickSave(); });
-function hasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; } }
+function hasSave() { return !!bestSaveRaw(); }
 function loadGame() {
   try {
-    const d = JSON.parse(localStorage.getItem(SAVE_KEY));
+    const d = JSON.parse(bestSaveRaw());
     if (!d || !Array.isArray(d.party)) return false;
     Object.assign(G, newState(), d);
     // Saves from version 2 had a ball count instead of a bag, and no Pokédex, PP or status.
@@ -2356,12 +2404,12 @@ function loadGame() {
 // ---------------------------------------------------------------------------
 // What the title screen says about saving: whether a save exists, and whether this browser keeps saves at all.
 function saveStatus() {
-  try {
-    localStorage.setItem(SAVE_KEY + '-test', '1'); localStorage.removeItem(SAVE_KEY + '-test');
-    const d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
-    if (!d || !Array.isArray(d.party)) return 'NO SAVED GAME';
-    return `SAVE: ${d.name} ${d.party.length} PKMN`;
-  } catch (e) { return 'BROWSER BLOCKS SAVES'; }
+  let d = null;
+  try { d = JSON.parse(bestSaveRaw() || 'null'); } catch (e) { d = null; }
+  if (d && Array.isArray(d.party)) return `SAVE: ${d.name} ${d.party.length} PKMN`;
+  if (cloud.ready) return 'NO SAVED GAME';
+  try { localStorage.setItem(SAVE_KEY + '-test', '1'); localStorage.removeItem(SAVE_KEY + '-test'); return 'NO SAVED GAME'; }
+  catch (e) { return 'BROWSER BLOCKS SAVES'; }
 }
 async function main() {
   while (true) {
@@ -2370,6 +2418,7 @@ async function main() {
     await fadeIn();
     await waitButton();
     sfx('select');
+    await Promise.race([cloudInit, wait(180)]);
     if (hasSave()) {
       // CONTINUE comes first so a quick double press loads your game instead of starting over.
       const i = await choose(['CONTINUE', 'NEW GAME'], { x: 36, y: 100, w: 88, h: 40, cancel: false });
